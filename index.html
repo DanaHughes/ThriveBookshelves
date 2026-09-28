@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thrive Academy · Curriculum prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{ --page:#f7f5ee; --card:#fdfcf8; --line:#e6e1d3; --ink:#1f2a1d; --muted:#76715f; --green:#2f4a2a; --green-2:#3f6236; --chip:#efebe0; }
+  *{ box-sizing:border-box }
+  body{ margin:0; background:var(--page); color:var(--ink); font-family:"Outfit", system-ui, sans-serif; line-height:1.45 }
+  main{ max-width:880px; margin:0 auto; padding:56px 20px 64px }
+  h1{ font-size:32px; font-weight:500; margin:0 0 8px; letter-spacing:-.01em }
+  .lede{ margin:0 0 32px; color:#3b4535; font-size:17px; max-width:62ch }
+  .cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:18px }
+  .card{ display:flex; flex-direction:column; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; text-decoration:none; color:inherit; box-shadow:0 8px 24px -18px rgba(31,42,29,.35) }
+  .card:hover{ border-color:#d9d2bd; background:#fff }
+  .card:focus-visible{ outline:3px solid var(--green-2); outline-offset:3px }
+  .tag{ align-self:flex-start; font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; background:var(--chip); color:#4d4a3e; border-radius:999px; padding:4px 10px }
+  .card h2{ margin:4px 0 0; font-size:22px; font-weight:500 }
+  .card p{ margin:0; color:var(--muted) }
+  .go{ margin-top:auto; padding-top:10px; font-weight:600; color:var(--green) }
+  .grades{ margin-top:28px }
+  .grades p{ margin:0 0 10px; color:var(--muted); font-size:15px }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px }
+  .chips a{ min-width:48px; height:44px; display:grid; place-items:center; padding:0 12px; border:1px solid #d9d2bd; border-radius:12px; background:var(--card); color:var(--ink); text-decoration:none; font-weight:600 }
+  .chips a:hover{ background:var(--green); border-color:var(--green); color:#fff }
+  .note{ margin-top:32px; font-size:14px; color:var(--muted) }
+</style>
+</head>
+<body>
+<main>
+  <h1>Thrive Academy curriculum prototype</h1>
+  <p class="lede">Edit shelves and workbooks in the Curriculum tab, then open the student bookshelf to see the changes. Keep both pages open side by side and the bookshelf updates as you save.</p>
+
+  <div class="cards">
+    <a class="card" href="thrive-admin-curriculum.html">
+      <span class="tag">Admin</span>
+      <h2>Curriculum tab</h2>
+      <p>Grade shelves, student changes, workbook contents, shelf text, and read-aloud audio.</p>
+      <span class="go">Open the Curriculum tab →</span>
+    </a>
+    <a class="card" href="thrive-wood-bookshelf.html">
+      <span class="tag">Student view</span>
+      <h2>Student bookshelf</h2>
+      <p>What a student sees: today's courses, the wooden shelves, and each workbook.</p>
+      <span class="go">Open the bookshelf →</span>
+    </a>
+  </div>
+
+  <nav class="grades" aria-label="Open a grade's bookshelf">
+    <p>Or jump straight to one grade's shelf:</p>
+    <div class="chips">
+      <a href="thrive-wood-bookshelf.html?grade=k" aria-label="Kindergarten">K</a>
+      <a href="thrive-wood-bookshelf.html?grade=1" aria-label="Grade 1">1</a>
+      <a href="thrive-wood-bookshelf.html?grade=2" aria-label="Grade 2">2</a>
+      <a href="thrive-wood-bookshelf.html?grade=3" aria-label="Grade 3">3</a>
+      <a href="thrive-wood-bookshelf.html?grade=4" aria-label="Grade 4">4</a>
+      <a href="thrive-wood-bookshelf.html?grade=5" aria-label="Grade 5">5</a>
+      <a href="thrive-wood-bookshelf.html?grade=6" aria-label="Grade 6">6</a>
+      <a href="thrive-wood-bookshelf.html?grade=7" aria-label="Grade 7">7</a>
+      <a href="thrive-wood-bookshelf.html?grade=8" aria-label="Grade 8">8</a>
+    </div>
+  </nav>
+
+  <p class="note">Prototype: edits are saved in the browser you make them in.</p>
+</main>
+</body>
+</html>
