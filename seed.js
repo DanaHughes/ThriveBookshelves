@@ -8,7 +8,7 @@
    ===================================================================== */
 (function () {
 'use strict';
-var VERSION = 5;
+var VERSION = 6;
 var GRADES = [
   { id:'k', n:0, label:'Kindergarten' }, { id:'1', n:1, label:'First Grade' }, { id:'2', n:2, label:'Second Grade' },
   { id:'3', n:3, label:'Third Grade' },  { id:'4', n:4, label:'Fourth Grade' }, { id:'5', n:5, label:'Fifth Grade' },
@@ -112,15 +112,15 @@ var SKILL_NOTE = 'Every virtual learning day: online reading lessons and your gr
 // Writing: one live writing lesson a week, then one Writing Journal page (graphic organizer + writing lines).
 // One card a week. Grades without a journal yet show it as coming soon.
 var WRITING_NOTES = ['One live writing lesson with your teacher each week.',
-  'After the lesson: one journal page with a graphic organizer and writing lines, matched to grade-level writing standards.'];
+  'After the lesson: one writing page with a graphic organizer and writing lines, matched to grade-level writing standards.'];
 function writingBook(n) {
   var url = L.writingJournal[n];
   return wb({ key:'writing', title:'Writing', color:C.writing, icon:'pen', days:1,
-    subtitle: n <= 2 ? 'Graphic Organizers and Journal Writing' : 'Graphic Organizers, Paragraphs, and Essays',
+    subtitle: n <= 2 ? 'Graphic Organizers and Sentence Writing' : 'Graphic Organizers, Paragraphs, and Essays',
     badge: url ? '' : 'Coming soon',
-    links: url ? [link('My Writing Journal', 'This week’s journal page', url)] : [],
-    linkNote: url ? '' : 'Your writing journal is coming soon.',
-    schedule:[day('Writing journal', url ? 'After your writing lesson, plan, write, and draw on this week’s journal page.'
+    links: url ? [link('Writing', 'This week’s writing page', url)] : [],
+    linkNote: url ? '' : 'Your writing pages are coming soon.',
+    schedule:[day('Writing', url ? 'After your writing lesson, plan, write, and draw on this week’s writing page.'
                                         : 'After your writing lesson, finish the writing your teacher gives you.', url ? [0] : [])],
     notes:WRITING_NOTES });
 }
@@ -291,6 +291,30 @@ function upgradeFrom4(d) {
   });
   Object.keys(oldIds).forEach(function (id) { if (!fresh.workbooks[id]) delete d.workbooks[id]; });
   if (d.apps) delete d.apps.eiw;
+  d.version = 5;
+  return upgradeFrom5(d);
+}
+
+/* Version 5 to 6: the Writing book says "Writing", not "Writing journal", everywhere students see it.
+   Only the old version 5 wording is replaced, so anything Dana typed herself is kept. */
+var V5_WRITING = {
+  'Writing journal':'Writing', 'My Writing Journal':'Writing', 'This week’s journal page':'This week’s writing page',
+  'Your writing journal is coming soon.':'Your writing pages are coming soon.',
+  'Graphic Organizers and Journal Writing':'Graphic Organizers and Sentence Writing',
+  'After your writing lesson, plan, write, and draw on this week’s journal page.':'After your writing lesson, plan, write, and draw on this week’s writing page.',
+  'After the lesson: one journal page with a graphic organizer and writing lines, matched to grade-level writing standards.':
+    'After the lesson: one writing page with a graphic organizer and writing lines, matched to grade-level writing standards.'
+};
+function upgradeFrom5(d) {
+  var swap = function (t) { return Object.prototype.hasOwnProperty.call(V5_WRITING, t) ? V5_WRITING[t] : t; };
+  Object.keys(d.workbooks || {}).forEach(function (id) {
+    if (!/^writing-/.test(id)) return;
+    var w = d.workbooks[id];
+    ['subtitle', 'linkNote'].forEach(function (k) { if (typeof w[k] === 'string') w[k] = swap(w[k]); });
+    (w.links || []).forEach(function (l) { if (typeof l.label === 'string') l.label = swap(l.label); if (typeof l.desc === 'string') l.desc = swap(l.desc); });
+    (w.schedule || []).forEach(function (x) { if (typeof x.title === 'string') x.title = swap(x.title); if (typeof x.desc === 'string') x.desc = swap(x.desc); });
+    if (Array.isArray(w.notes)) w.notes = w.notes.map(swap);
+  });
   d.version = VERSION;
   return d;
 }
@@ -342,5 +366,5 @@ function refreshText(d) {
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
 })();
