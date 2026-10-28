@@ -33,6 +33,10 @@ var TEXT_FIELDS = [
   { group:'Course shelf', key:'tidy', label:'Tidy button', where:'Button that puts every book and plant back in place.', def:'Put everything back' },
   { group:'This week (inside a workbook)', key:'thisWeek', label:'This week heading', where:'Heading on the first page of every workbook with weekly assignments.', def:'THIS WEEK' },
   { group:'This week (inside a workbook)', key:'weekExplain', label:'How the week works', where:'Under the THIS WEEK heading. {days} becomes the number of virtual learning days, written as a word.', tokens:['days'], def:'Do one virtual learning day at a time, {days} days each week.', multi:true },
+  { group:'This week (inside a workbook)', key:'weekOf', label:'Later week heading', where:'Top of each page for a later week. {dates} becomes the dates, like Nov 2–6.', tokens:['dates'], def:'Week of {dates}' },
+  { group:'This week (inside a workbook)', key:'cheers', label:'Picture page sayings', where:'One short line on each later week’s picture page. Put each saying on its own line; they take turns.', def:'Keep growing!\nEvery day counts.\nYou’ve got this!\nLittle steps, big growth.\nKeep reading, keep growing.\nYou are doing great!\nOne day at a time.\nProud of your hard work!', multi:true },
+  { group:'This week (inside a workbook)', key:'breakNext', label:'Break coming note', where:'On the picture page of the week before a break. {break} becomes the break name, {date} the day school starts again.', tokens:['break','date'], def:'{break} is next week. See you {date}!' },
+  { group:'This week (inside a workbook)', key:'newQuarter', label:'New quarter tag', where:'Tag on the picture page of the week a new quarter starts.', def:'New quarter!' },
   { group:'This week (inside a workbook)', key:'dayNumber', label:'Day name on each card', where:'Big words at the top of each card. {n} becomes the day number.', tokens:['n'], def:'Day {n}' },
   { group:'This week (inside a workbook)', key:'assignmentBtn', label:'Button name when a day has more than one', where:'On each button of a card with two or more buttons. {n} becomes 1, 2, and so on.', tokens:['n'], def:'Assignment {n}' },
   { group:'This week (inside a workbook)', key:'spendMinutes', label:'Time under a button', where:'Small words under a button that has minutes set. {minutes} becomes the number of minutes.', tokens:['minutes'], def:'Spend about {minutes} minutes' },
@@ -251,6 +255,37 @@ function upgradeFrom3(d) {
   return d;
 }
 
+/* School calendar. Each workbook gets one page per school week, from this week to the end date.
+   A week whose Monday falls inside a break is skipped. Dates are YYYY-MM-DD.
+   From the Thrive Communities 2026–2027 school calendar (class days Aug 10 – May 28). */
+var CALENDAR = {
+  start: '2026-08-10', end: '2027-05-28',
+  breaks: [
+    { label:'September break', from:'2026-09-07', to:'2026-09-11' },
+    { label:'Fall break',      from:'2026-10-19', to:'2026-10-23' },
+    { label:'Thanksgiving',    from:'2026-11-23', to:'2026-11-27' },
+    { label:'Winter break',    from:'2026-12-21', to:'2027-01-01' },
+    { label:'Spring break',    from:'2027-03-22', to:'2027-03-26' }
+  ],
+  quarters: [
+    { label:'Quarter 2', from:'2026-10-26' }, { label:'Quarter 3', from:'2027-01-18' }, { label:'Quarter 4', from:'2027-03-29' }
+  ]
+};
+function parseDay(s) { var p = String(s).split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }   // local date, no time zone shift
+function dayKey(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function mondayOf(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; }
+// Mondays (as YYYY-MM-DD) of every school week from the week of `from` through the end date, skipping breaks.
+function schoolWeeks(cal, from) {
+  cal = cal || CALENDAR;
+  var start = mondayOf(parseDay(cal.start)), first = mondayOf(from || new Date()), end = parseDay(cal.end), out = [];
+  var d = first < start ? start : first;
+  for (; d <= end && out.length < 60; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)) {
+    var off = (cal.breaks || []).some(function (b) { return d >= mondayOf(parseDay(b.from)) && d <= parseDay(b.to); });
+    if (!off) out.push(dayKey(d));
+  }
+  return out;
+}
+
 /* Shelf text Dana never changed still holds an older default: swap it for today's shorter default.
    Text she typed herself is kept. Safe to run on every load. */
 var RETIRED_TEXT = {
@@ -267,5 +302,5 @@ function refreshText(d) {
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, refreshText:refreshText, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
 })();
