@@ -898,11 +898,15 @@ body.locked .dock{visibility:hidden}
 .sheet-head b{font-size:15px;line-height:1.2}
 .sheet-head .nameecho{min-width:6em}
 .spreadbook .slidetype.on{cursor:text}
+.slidebox::placeholder{color:transparent}
+.slidetype.on .slidebox::placeholder{color:#a8a594;font-style:italic}
+.spreadbook .typed::placeholder{color:#a8a594;font-style:italic}
+.dk.removepage{color:var(--miss)}
 .slidemove{position:absolute;z-index:4;transform:translate(-55%,-55%);width:24px;height:24px;border-radius:50%;padding:0;
            border:1.5px solid var(--brand);background:var(--sheet);color:var(--brand-ink);font-size:14px;line-height:1;
            display:none;place-items:center;cursor:grab;touch-action:none}
 .slidetype.on .slidemove:not([hidden]){display:grid}
-@media print{.slidemove{display:none!important}}
+@media print{.slidemove{display:none!important}.slidebox::placeholder,.typed::placeholder{color:transparent!important}}
 .spreadbook .slidetype.on .slidebox{outline:0!important;background:transparent!important;border-radius:10px}
 .spreadbook .slidetype.on .slidebox:focus{background:rgba(48,76,41,.08)!important;outline:0!important}
 /* the writing spread: pages go almost to the edge; every option is a small icon
@@ -1110,6 +1114,7 @@ const STAGE_ICON = {
 const ICON = {
   primary: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 18h18"/><path d="M3 12h18" stroke-dasharray="2.5 2.5"/></svg>',
   regular: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18M3 10h18M3 15h18M3 20h18"/></svg>',
+  removepage: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 14h6"/></svg>',
   addpage: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M12 11v6M9 14h6"/></svg>',
   play:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M10 9.5v5l4.5-2.5z"/></svg>',
   prev:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
@@ -2221,7 +2226,6 @@ ENGINES.writelines = (b, ctx) => {
   function setTyping(on, user){
     typing = on;
     rows.forEach(x => { x.padBox.hidden = on; x.tl.hidden = !on; });
-    if (on && user && rows[0] && !wrap.closest("[hidden]")) rows[0].inp.focus();
     if (user) ctx.changed();
   }
   DOCK.listeners.push((m, user) => setTyping(m === "type", user));
@@ -2263,6 +2267,7 @@ ENGINES.writelines = (b, ctx) => {
     const inp = lines > 1 ? el("textarea", "typed") : el("input");
     if (lines === 1) inp.type = "text";
     inp.setAttribute("aria-label", r.prefix ? "Finish the sentence: " + r.prefix : (r.label || "Write your sentences"));
+    inp.placeholder = "Tap to type your sentences";
     // On paper, typed words print as text on lines (a text box would cut them off).
     const pv = el("div", "print-typed");
     inp.addEventListener("input", () => { pv.textContent = inp.value; ctx.changed(); });
@@ -2297,6 +2302,25 @@ ENGINES.writelines = (b, ctx) => {
 
   // Ran out of room? Another page of the same lines, on the next page of the book.
   let extra = 0;
+  const extraPages = [];
+  // "Remove this page" shows on the toolbar while the last added page is open.
+  const removeBtn = dockBtn("ic removepage", ICON.removepage, "Remove this added page", () => {
+    if (ctx.locked() || !extraPages.length) return;
+    const last = extraPages[extraPages.length - 1];
+    if ((!last.row.pad.isEmpty() || last.row.inp.value.trim()) && !window.confirm("Remove this page and the writing on it?")) return;
+    extraPages.pop();
+    rows.splice(rows.indexOf(last.row), 1);
+    extra -= 1;
+    const back = extraPages.length ? extraPages[extraPages.length - 1].pg : leaves.find(p => p.classList.contains("work-writelines"));
+    removeBookPage(last.pg);
+    syncRemove();
+    ctx.changed();
+    if (back) turnTo(leaves.indexOf(back));
+  });
+  function syncRemove(){
+    extraPages.forEach((e, i) => { e.pg._dock = i === extraPages.length - 1 ? dock.concat(removeBtn) : dock; });
+    renderDock();
+  }
   function addExtra(){
     extra += 1;
     const sec = el("section", "block fillcol");
@@ -2308,7 +2332,7 @@ ENGINES.writelines = (b, ctx) => {
     x.padBox.classList.add("fitbox");
     x.padBox.parentElement.classList.add("fillcol");
     const pg = ctx.addPage(sec, "work work-writelines more-page");
-    if (pg) { pg._dock = dock; renderDock(); }
+    if (pg) { extraPages.push({ pg, row: x }); syncRemove(); }
     return pg;
   }
   const filled = x => !x.pad.isEmpty() || !!x.inp.value.trim();
@@ -2334,7 +2358,7 @@ ENGINES.writelines = (b, ctx) => {
         image: x.pad.isEmpty() ? null : x.pad.snapshot(900) }])) }),
     score: () => null,
     showSaved(){},
-    lock(){ if (pic) pic.lock(); rows.forEach(x => { x.pad.lock(); x.inp.readOnly = true; }); ruleBtns.forEach(t => { t.disabled = true; }); },
+    lock(){ removeBtn.disabled = true; if (pic) pic.lock(); rows.forEach(x => { x.pad.lock(); x.inp.readOnly = true; }); ruleBtns.forEach(t => { t.disabled = true; }); },
   };
 };
 
@@ -3129,6 +3153,7 @@ ENGINES.slide = (b, ctx) => {
     const t = el("textarea", "slidebox");
     Object.assign(t.style, { width: a.w * 100 + "%", height: a.h * 100 + "%" });
     t.setAttribute("aria-label", a.label);
+    t.placeholder = "Tap to type";
     t.readOnly = true; t.tabIndex = -1;
     t.addEventListener("input", () => { showHandle(a); ctx.changed(); });
     t.addEventListener("focus", () => showHandle(a));
@@ -3182,7 +3207,6 @@ ENGINES.slide = (b, ctx) => {
     mode = m;
     layer.classList.toggle("on", m === "type");
     Object.values(boxes).forEach(t => { t.readOnly = m !== "type"; t.tabIndex = m === "type" ? 0 : -1; });
-    if (m === "type" && user && !pad.el.closest("[hidden]")) boxes[b.areas[0].id].focus();
   }
   DOCK.listeners.push(setMode);
   const pw = el("div", "wpad");
@@ -4118,6 +4142,19 @@ function fitPads(){
 }
 /* A page added while the book is open ("Add a page"). It takes the place of
    the empty page at the end, or starts a new spread. */
+function removeBookPage(pg){
+  const book = $(".spreadbook");
+  if (!book) return;
+  pg.remove();
+  leaves.filter(p => p.classList.contains("spacer")).forEach(p => p.remove());
+  leaves = leaves.filter(p => p !== pg && !p.classList.contains("spacer"));
+  const tail = leaves.findIndex(p => p.classList.contains("tail"));
+  if (tail >= 0 && tail % 2) leaves.splice(tail, 0, bookPage("blank spacer"));
+  if (leaves.length % 2) leaves.push(bookPage("blank spacer"));
+  const layer = $(".turnlayer", book);
+  leaves.forEach(p => book.insertBefore(p, layer || null));
+  layout();
+}
 function addBookPage(node, kind){
   const book = $(".spreadbook");
   if (!book) return null;
