@@ -8,7 +8,7 @@
    ===================================================================== */
 (function () {
 'use strict';
-var VERSION = 3;
+var VERSION = 4;
 var GRADES = [
   { id:'k', n:0, label:'Kindergarten' }, { id:'1', n:1, label:'First Grade' }, { id:'2', n:2, label:'Second Grade' },
   { id:'3', n:3, label:'Third Grade' },  { id:'4', n:4, label:'Fourth Grade' }, { id:'5', n:5, label:'Fifth Grade' },
@@ -33,6 +33,9 @@ var TEXT_FIELDS = [
   { group:'Course shelf', key:'tidy', label:'Tidy button', where:'Button that puts every book and plant back in place.', def:'Put everything back' },
   { group:'This week (inside a workbook)', key:'thisWeek', label:'This week heading', where:'Heading on the first page of every workbook with weekly assignments.', def:'THIS WEEK' },
   { group:'This week (inside a workbook)', key:'weekExplain', label:'How the week works', where:'Under the THIS WEEK heading. {days} becomes the number of virtual learning days, written as a word.', tokens:['days'], def:'Each week has {days} virtual learning days at home, plus your in-person days on campus. Do your virtual learning days in order, one per day, on any {days} days that work for you.', multi:true },
+  { group:'This week (inside a workbook)', key:'dayNumber', label:'Day name on each card', where:'Big words at the top of each card. {n} becomes the day number.', tokens:['n'], def:'Day {n}' },
+  { group:'This week (inside a workbook)', key:'assignmentBtn', label:'Button name when a day has more than one', where:'On each button of a card with two or more buttons. {n} becomes 1, 2, and so on.', tokens:['n'], def:'Assignment {n}' },
+  { group:'This week (inside a workbook)', key:'spendMinutes', label:'Time under a button', where:'Small words under a button that has minutes set. {minutes} becomes the number of minutes.', tokens:['minutes'], def:'Spend about {minutes} minutes' },
   { group:'This week (inside a workbook)', key:'dayLabel', label:'Card label under the number', where:'Under the big number on each card.', def:'Virtual learning day' },
   { group:'This week (inside a workbook)', key:'todayTag', label:'Today tag', where:'Tag on the card for today.', def:'Today' },
   { group:'This week (inside a workbook)', key:'lookAheadTag', label:'Look ahead tag', where:'Tag on cards for later this week.', def:'Look ahead' },
@@ -66,10 +69,10 @@ var L = {
 };
 /* Shared app logins. `vendor` is for admins only; students see `name`, `button` and `login`. */
 var SEED_APPS = {
-  core5:   { vendor:'Lexia Core5',           name:'Online reading lessons', button:'Start today’s lessons',  url:'https://www.lexiacore5.com/?SiteID=7229-2300-5006-6748', login:'Sign in with Clever' },
-  powerUp: { vendor:'Lexia PowerUp',         name:'Online reading lessons', button:'Start today’s lessons',  url:'https://www.lexiapowerup.com/', login:'Sign in with Clever' },
-  ixl:     { vendor:'IXL',                   name:'Grade-level skill path', button:'Open your skill path',        url:'https://www.ixl.com/signin', login:'Sign in with Clever' },
-  mypath:  { vendor:'MyPath',                name:'Online math lessons',    button:'Start today’s math lessons', url:'https://clever.com/login', login:'Sign in with Clever' },
+  core5:   { vendor:'Lexia Core5',           name:'Online reading lessons', button:'Start today’s lessons',  url:'https://www.lexiacore5.com/?SiteID=7229-2300-5006-6748', login:'Click here' },
+  powerUp: { vendor:'Lexia PowerUp',         name:'Online reading lessons', button:'Start today’s lessons',  url:'https://www.lexiapowerup.com/', login:'Click here' },
+  ixl:     { vendor:'IXL',                   name:'Grade-level skill path', button:'Open your skill path',        url:'https://www.ixl.com/signin', login:'Click here' },
+  mypath:  { vendor:'MyPath',                name:'Online math lessons',    button:'Start today’s math lessons', url:'https://clever.com/login', login:'Click here' },
   eiw:     { vendor:'Essentials in Writing', name:'Writing lessons',        button:'Start today’s lesson',   url:'https://members.essentialsinwriting.com/login/', login:'Use your own writing lesson login' }
 };
 var C = { reading:'#2f4a35', handwriting:'#6a4c33', writing:'#253a5c', novel:'#8a5a22', wordstudy:'#1f4a3c', math:'#6b2c27', sel:'#7d3a4a', vocab:'#3d5a45', typing:'#55633a' };
@@ -84,27 +87,34 @@ var MATH_SUB = {
 function app(key) { return { kind:'app', app:key }; }
 function link(label, desc, url) { return { kind:'link', label:label, desc:desc, url:url }; }
 // A virtual learning day: its card title, description, and which of the book's buttons it shows (by position).
-function day(title, desc, links) { return { title:title, desc:desc, links:links }; }
+// minutes (optional) maps a button's position to how long students should spend on it, like { 0:20, 1:10 }.
+function day(title, desc, links, minutes) { var d = { title:title, desc:desc, links:links }; if (minutes) d.minutes = minutes; return d; }
 function wb(o) { var b = { course:'la', placement:'shelf', extraLabel:'', badge:'', icon:'book', days:null, links:[], linkNote:'', notes:[], schedule:[] }; for (var k in o) b[k] = o[k]; return b; }
-function same(n, d) { var out = []; for (var i = 0; i < n; i++) out.push({ title:d.title, desc:d.desc, links:d.links.slice() }); return out; }
+function same(n, d) { var out = []; for (var i = 0; i < n; i++) out.push(JSON.parse(JSON.stringify(d))); return out; }
 
-var READ_DAY = day('Online reading lessons', 'Complete today’s online reading lessons until the program says you are done for the day.', [0]);
-var SKILL_DAY = day('Grade-level skill path', 'Work through the next skills on your grade-level skill path.', [1]);
+// Every Language Arts day: both buttons (online reading lessons and the grade-level skill path) with minutes, in any order.
+// The card has no title or directions, just the buttons.
+var READ_MINUTES = [[15, 10], [20, 15], [25, 15], [25, 15], [25, 15], [25, 15], [25, 15], [25, 15], [25, 15]];   // [reading, skill path] by grade, K first
+function readDays(n) {
+  var m = READ_MINUTES[n];
+  return same(3, day('', '', [0, 1], { 0:m[0], 1:m[1] }));
+}
+var SKILL_NOTE = 'Every virtual learning day: online reading lessons and your grade-level skill path, in any order.';
 
 function seedBooksForGrade(n) {
   var G = GRADES[n].label, out = [];
   if (n <= 1) out.push(wb({ key:'reading', title:'Phonics and Word Study', color:C.reading, icon:'book',
     subtitle:'Letter Recognition, Phonics, Spelling, Vocabulary, Word Study, Comprehension, Grammar, and Fluency',
-    links:[app('core5'), app('ixl')], schedule:[READ_DAY, READ_DAY, SKILL_DAY],
-    notes:['Adaptive online reading lessons combined with grade-level exposure activities.', 'Second semester: grade-level skill activities may be added.', 'Your skill path day builds the skills for your grade.'] }));
+    links:[app('core5'), app('ixl')], schedule:readDays(n),
+    notes:['Adaptive online reading lessons combined with grade-level exposure activities.', 'Second semester: grade-level skill activities may be added.', SKILL_NOTE] }));
   else if (n <= 5) out.push(wb({ key:'reading', title:'Reading and Word Study', color:C.reading, icon:'book',
     subtitle:'Phonics, Spelling, Vocabulary, Word Study, Comprehension, Grammar, and Fluency',
-    links:[app('core5'), app('ixl')], schedule:[READ_DAY, READ_DAY, SKILL_DAY],
-    notes: n === 2 ? ['Adaptive online reading lessons combined with grade-level exposure activities.', 'Second semester: grade-level skill activities may be added.', 'Your skill path day builds the skills for your grade.']
-                   : ['Adaptive online reading lessons with matching skill activities.', 'Your skill path day builds the skills for your grade.'] }));
+    links:[app('core5'), app('ixl')], schedule:readDays(n),
+    notes: n === 2 ? ['Adaptive online reading lessons combined with grade-level exposure activities.', 'Second semester: grade-level skill activities may be added.', SKILL_NOTE]
+                   : ['Adaptive online reading lessons with matching skill activities.', SKILL_NOTE] }));
   else out.push(wb({ key:'reading', title:'Reading and Vocabulary', color:C.reading, icon:'book', subtitle:'Reading, Word Study, Comprehension, Grammar, and Vocabulary',
-    links:[app('powerUp'), app('ixl')], schedule:[READ_DAY, READ_DAY, SKILL_DAY],
-    notes:['Adaptive online reading lessons and grade-level exposure through grade-level activities.', 'Second semester: grade-level skill activities may be added.', 'Your skill path day builds the skills for your grade.'] }));
+    links:[app('powerUp'), app('ixl')], schedule:readDays(n),
+    notes:['Adaptive online reading lessons and grade-level exposure through grade-level activities.', 'Second semester: grade-level skill activities may be added.', SKILL_NOTE] }));
   var HW_DAY = day('Handwriting lesson', 'Complete the next pages in your handwriting workbook.', [0]);
   if (n <= 2) out.push(wb({ key:'handwriting', title:'Handwriting', color:C.handwriting, icon:'pencil', subtitle:'Manuscript Printing and Letter Formation',
     links:[link('Thrive Printing Interactive Workbook', 'Handwriting workbook', L.printingWb)], schedule:same(3, HW_DAY), notes:['Handwriting uses the Thrive Printing Interactive Workbook.'] }));
@@ -190,7 +200,7 @@ function weekPlan(book, days) {
   var s = book.schedule || [], out = [];
   for (var i = 0; i < days; i++) {
     var d = s[i] || s[s.length - 1] || { title:book.title, desc:'', links:[0] };
-    out.push({ title:d.title || book.title, desc:d.desc || '', links:dayLinks(d) });
+    out.push({ title:typeof d.title === 'string' ? d.title : book.title, desc:d.desc || '', links:dayLinks(d), minutes:d.minutes || {} });   // a blank title stays blank
   }
   return out;
 }
@@ -206,6 +216,37 @@ function upgradeFrom2(d) {
   Object.keys(d.workbooks).forEach(function (id) {
     (d.workbooks[id].schedule || []).forEach(function (day) { day.links = dayLinks(day); delete day.link; });
   });
+  return upgradeFrom3(d);
+}
+
+/* Version 3 to 4: the small words under app buttons say "Click here" instead of naming the sign-in service.
+   Only the old wording is replaced, so anything Dana typed there herself is kept.
+   Language Arts reading books that still have the old days (two reading days, then one skill path day) get
+   the new daily reading + skill path cards with minutes for each grade. A reading book Dana changed is kept. */
+var OLD_READ_DAYS = 'Online reading lessons|Online reading lessons|Grade-level skill path';
+function upgradeFrom3(d) {
+  Object.keys(d.apps || {}).forEach(function (k) { if (d.apps[k] && d.apps[k].login === 'Sign in with Clever') d.apps[k].login = 'Click here'; });
+  var fresh = buildSeed(), old = {}, placed = {};
+  Object.keys(d.workbooks || {}).forEach(function (id) {
+    var w = d.workbooks[id];
+    if (/^reading-/.test(id) && (w.schedule || []).map(function (x) { return x.title; }).join('|') === OLD_READ_DAYS) old[id] = true;
+  });
+  GRADES.forEach(function (g) {
+    var shelf = d.grades && d.grades[g.id], freshId = fresh.grades[g.id].books.filter(function (id) { return /^reading-/.test(id); })[0];
+    if (!shelf || !freshId) return;
+    shelf.books = shelf.books.map(function (id) {
+      if (!old[id]) return id;
+      if (!placed[freshId] && (!d.workbooks[freshId] || old[freshId])) d.workbooks[freshId] = fresh.workbooks[freshId];
+      placed[freshId] = true;
+      return freshId;
+    });
+  });
+  Object.keys(old).forEach(function (id) {   // old reading books no shelf or student uses any more
+    if (placed[id]) return;
+    var used = GRADES.some(function (g) { return d.grades[g.id] && d.grades[g.id].books.indexOf(id) >= 0; }) ||
+      Object.keys(d.overrides || {}).some(function (s) { return (d.overrides[s].added || []).indexOf(id) >= 0; });
+    if (!used) delete d.workbooks[id];
+  });
   d.version = VERSION;
   return d;
 }
@@ -214,5 +255,5 @@ function upgradeFrom2(d) {
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, needsUpgrade:needsUpgrade };
 })();
