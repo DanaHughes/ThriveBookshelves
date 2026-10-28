@@ -106,6 +106,7 @@ a.nav-item[href]:hover { background: #eceee3; color: var(--nav-text); }
           mask-image: linear-gradient(to right, transparent 0, #000 12%, #000 88%, transparent 100%);
 }
 body.is-embedded .sidebar, body.is-embedded .avatar { display: none; }
+body[data-screen="course"] .scene { display: none; }   /* no landscape under a course's shelves */
 
 /* =========================================================
    4. BOOKSHELF
@@ -236,6 +237,8 @@ body.is-embedded .sidebar, body.is-embedded .avatar { display: none; }
 .page h2 { font-size: clamp(20px, 6cqw, 30px); font-weight: 600; color: var(--headline); margin-top: 1.5cqw; }
 .page h3 { font-size: clamp(15px, 3.6cqw, 18px); font-weight: 600; margin: 5cqw 0 2cqw; }
 .page p, .page li { font-size: clamp(14px, 3.2cqw, 16px); }
+.page-mascot { display: block; width: 46%; max-width: 190px; height: auto; margin: auto -7cqw 0 auto; padding-top: 3cqw;   /* flush with the page's right edge, so the edge crops his waving hand */ mix-blend-mode: multiply; pointer-events: none; }   /* multiply hides the video's white background on the cream page */
+.page-mascot + .page-foot { margin-top: 0; }
 .page-foot { margin-top: auto; padding-top: 3cqw; font-size: 12px; color: var(--muted); text-align: center; }
 .lead { margin: 2cqw 0 0; color: var(--muted); }
 
@@ -692,12 +695,17 @@ button.link-card { width: 100%; font: inherit; text-align: left; cursor: pointer
 .helper__bubble::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 14px; height: 14px; background: #fff; border-right: 2px solid var(--chip-border); border-bottom: 2px solid var(--chip-border); transform: translateX(-50%) rotate(45deg); }
 .helper.has-extra .helper__bubble { display: none; }
 .helper.has-extra { padding-top: 190px; }
+.helper:not(.has-extra) { padding-top: 90px; }   /* mascot and bubble sit lower, beside the shelves */
 
 /* reader: done button */
 .done-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 16px; border: 2px solid var(--chip-active); border-radius: 12px; background: #fff; color: var(--headline); font-weight: 700; font-size: 14px; cursor: pointer; }
 .done-btn .icon { width: 18px; height: 18px; stroke-width: 3; }
 .done-btn[aria-pressed="true"] { background: #45852b; border-color: #45852b; color: #fff; }
 .done-btn[hidden] { display: none; }
+.reader-status .week-goal--top { margin: 0; font-size: 14px; font-weight: 600; color: var(--headline); }
+.reader-status .week-goal--top[hidden] { display: none; }
+.toolbar .done-btn { background: var(--headline); border-color: var(--headline); color: #fff; }
+.toolbar .done-btn[aria-pressed="true"] { background: #45852b; border-color: #45852b; }
 /* toast sits at the bottom on the shelf pages so it never covers the books */
 body:not(.reader-open) .toast { top: auto; bottom: 24px; }
 .page .week-goal { margin: 0 0 2.5cqw; font-size: 14px; font-weight: 600; color: var(--sage); }
@@ -712,7 +720,7 @@ body:not(.reader-open) .toast { top: auto; bottom: 24px; }
   .library .bookcase { width: 100%; }
   .helper { flex-basis: auto; flex-direction: row; align-items: flex-end; gap: 10px; }
   .helper__img { width: 130px; }
-  .helper.has-extra { padding-top: 0; }
+  .helper.has-extra, .helper:not(.has-extra) { padding-top: 0; }
   .helper__extra { position: static; transform: rotate(4deg); order: 2; }
   .helper__img { order: 1; }
   .woodcase .case-row { padding: 28px 12px 0; }
@@ -995,9 +1003,7 @@ body:not(.reader-open) .toast { top: auto; bottom: 24px; }
     <div class="reader-status">
       <button type="button" class="read-btn" data-read="#reader"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11"/></svg><span>Read aloud</span></button>
       <span class="page-indicator" id="pageIndicator" aria-live="polite"></span>
-      <button type="button" class="done-btn" id="doneBtn" aria-pressed="false" hidden>
-        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg><span id="doneBtnLabel">I finished today’s assignment</span>
-      </button>
+      <span class="week-goal week-goal--top" id="topWeekGoal" data-week-goal hidden></span>
     </div>
   </div>
   <div class="reader-stage"><div id="bookHost"></div></div>
@@ -1005,6 +1011,11 @@ body:not(.reader-open) .toast { top: auto; bottom: 24px; }
     <div class="tool-group">
       <button type="button" class="tool" id="prevBtn" aria-label="Previous page">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span class="tool__label">Previous</span>
+      </button>
+    </div>
+    <div class="tool-group" id="doneGroup" hidden>
+      <button type="button" class="done-btn" id="doneBtn" aria-pressed="false">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg><span id="doneBtnLabel">I finished today’s assignment</span>
       </button>
     </div>
     <div class="tool-group">
@@ -1070,7 +1081,7 @@ var TEXT_FIELDS = [
   { group:'Course shelf', key:'extraTag', label:'Extra tag', where:'Tag on the workbook the mascot is holding.', def:'EXTRA' },
   { group:'Course shelf', key:'tidy', label:'Tidy button', where:'Button that puts every book and plant back in place.', def:'Put everything back' },
   { group:'This week (inside a workbook)', key:'thisWeek', label:'This week heading', where:'Heading on the first page of every workbook with weekly assignments.', def:'THIS WEEK' },
-  { group:'This week (inside a workbook)', key:'weekExplain', label:'How the week works', where:'Under the THIS WEEK heading. {days} becomes the number of virtual learning days, written as a word.', tokens:['days'], def:'Each week has {days} virtual learning days at home, plus your in-person days on campus. Do your virtual learning days in order, one per day, on any {days} days that work for you.', multi:true },
+  { group:'This week (inside a workbook)', key:'weekExplain', label:'How the week works', where:'Under the THIS WEEK heading. {days} becomes the number of virtual learning days, written as a word.', tokens:['days'], def:'Do one virtual learning day at a time, {days} days each week.', multi:true },
   { group:'This week (inside a workbook)', key:'dayNumber', label:'Day name on each card', where:'Big words at the top of each card. {n} becomes the day number.', tokens:['n'], def:'Day {n}' },
   { group:'This week (inside a workbook)', key:'assignmentBtn', label:'Button name when a day has more than one', where:'On each button of a card with two or more buttons. {n} becomes 1, 2, and so on.', tokens:['n'], def:'Assignment {n}' },
   { group:'This week (inside a workbook)', key:'spendMinutes', label:'Time under a button', where:'Small words under a button that has minutes set. {minutes} becomes the number of minutes.', tokens:['minutes'], def:'Spend about {minutes} minutes' },
@@ -1081,7 +1092,7 @@ var TEXT_FIELDS = [
   { group:'This week (inside a workbook)', key:'doneTag', label:'Done tag', where:'Tag on cards already finished this week.', def:'Done' },
   { group:'This week (inside a workbook)', key:'openAgain', label:'Open again button', where:'Button on today’s card after it is finished.', def:'Open again' },
   { group:'This week (inside a workbook)', key:'weekDone', label:'Week finished message', where:'Shown when every virtual learning day this week is done.', def:'You finished every virtual learning day this week. Great work!', multi:true },
-  { group:'This week (inside a workbook)', key:'finishPrompt', label:'Finish line', where:'Next to the finish button at the bottom of the first page.', def:'When you finish today’s virtual learning day:' },
+  { group:'This week (inside a workbook)', key:'finishPrompt', label:'Finish line', where:'Above the finish button on the first page. Leave blank for none.', def:'' },
   { group:'Inside a workbook', key:'startHere', label:'Links heading (extras)', where:'Heading above the buttons in Explore extras.', def:'Start here' },
   { group:'Inside a workbook', key:'notesEyebrow', label:'Notes page small label', where:'Small line at the top of the notes page.', def:'About this book' },
   { group:'Inside a workbook', key:'notesTitle', label:'Notes page heading', where:'Heading on the notes page.', def:'Notes' },
@@ -1289,11 +1300,23 @@ function upgradeFrom3(d) {
   return d;
 }
 
+/* Shelf text Dana never changed still holds an older default: swap it for today's shorter default.
+   Text she typed herself is kept. Safe to run on every load. */
+var RETIRED_TEXT = {
+  weekExplain: ['Each week has {days} virtual learning days at home, plus your in-person days on campus. Do your virtual learning days in order, one per day, on any {days} days that work for you.'],
+  finishPrompt: ['When you finish today’s virtual learning day:']
+};
+function refreshText(d) {
+  if (!d || !d.text) return d;
+  Object.keys(RETIRED_TEXT).forEach(function (k) { if (RETIRED_TEXT[k].indexOf(d.text[k]) >= 0) d.text[k] = TEXT_DEFAULTS[k]; });
+  return d;
+}
+
 /* Older saved data (version 1) still carries brand names and no weekly schedule. */
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, refreshText:refreshText, needsUpgrade:needsUpgrade };
 })();
 
 </script>
@@ -1493,7 +1516,7 @@ const GRADES = [
    ========================================================= */
 const CURRICULUM_KEY = 'thriveCurriculum:v1';
 // Saved data older than version 2 (brand names, no weekly cards) is ignored until the Curriculum tab upgrades it.
-function loadCurriculum() { try { const raw = localStorage.getItem(CURRICULUM_KEY); let d = raw ? JSON.parse(raw) : null; if (d && d.version === 3) d = window.ThriveSeed.upgradeFrom3(d); return d && !window.ThriveSeed.needsUpgrade(d) ? d : null; } catch (e) { return null; } }
+function loadCurriculum() { try { const raw = localStorage.getItem(CURRICULUM_KEY); let d = raw ? JSON.parse(raw) : null; if (d && d.version === 3) d = window.ThriveSeed.upgradeFrom3(d); window.ThriveSeed.refreshText(d); return d && !window.ThriveSeed.needsUpgrade(d) ? d : null; } catch (e) { return null; } }
 let CUR = loadCurriculum() || window.ThriveSeed.buildSeed();
 const TEXT_DEFAULTS = window.ThriveSeed.TEXT_DEFAULTS;
 const NUM_WORDS = ['zero','one','two','three','four','five','six','seven'];
@@ -1949,7 +1972,6 @@ function planHtml(course) {
       <h2>${esc(complete ? T('planDoneTitle') : T('planTitle'))}</h2>
       <p>${esc(complete ? T('planDoneBody') : T('planBody', { days: NUM_WORDS[shelfDays(currentGrade())] || shelfDays(currentGrade()) }))}</p>
     </div>
-    <div class="plan__progress" aria-live="polite">${esc(T('progress', { done: p.done, total: p.total }))}<span class="plan__bar"><i style="width:${p.total ? Math.round(p.done / p.total * 100) : 0}%"></i></span></div>
   </div>`;
 }
 function renderCourse() {
@@ -1971,6 +1993,7 @@ function renderSubjects() {
 function showView(view, focusTarget) {
   stopReading();
   state.view = view;
+  document.body.dataset.screen = view;   // lets the styles hide the landscape on the course shelf (not data-view: clicks use that)
   Object.entries(dom.views).forEach(([k, el]) => { el.hidden = k !== view; });
   document.querySelectorAll('#portalNav [data-view]').forEach(b => {
     const active = b.dataset.view === (view === 'course' ? 'today' : view);
@@ -2072,6 +2095,26 @@ function refreshWeekCards() {
   const all = weekState(book).allDone;
   document.querySelectorAll('[data-week-done]').forEach(el => { el.hidden = !all; });
 }
+// The tree mascot on a workbook's first page waves once when the book opens and once when the student leaves.
+// Between waves it rests on the first frame. Reduced motion: it never moves.
+function waveMascot() {
+  const v = dom.host.querySelector('video[data-mascot]');
+  if (!v || REDUCED_MOTION || !v.offsetParent) return null;
+  try { v.currentTime = 0; } catch (e) { /* not loaded yet */ }
+  const p = v.play(); if (p && p.catch) p.catch(() => {});
+  return v;
+}
+document.addEventListener('ended', e => { if (e.target.matches && e.target.matches('video[data-mascot]')) { try { e.target.currentTime = 0; } catch (err) { /* ignore */ } } }, true);
+// Back button: let the mascot wave goodbye (at most 2.5 seconds), then close. A second press closes right away.
+function leaveBook() {
+  if (state.leaving) { closeBook(); return; }
+  const v = waveMascot();
+  if (!v) { closeBook(); return; }
+  state.leaving = true;
+  const done = () => { if (!state.leaving) return; state.leaving = false; clearTimeout(t); v.removeEventListener('ended', done); closeBook(); };
+  const t = setTimeout(done, 2500);
+  v.addEventListener('ended', done);
+}
 function buildPages(book, contextLabel) {
   if (book.week && state.bookContext === 'course') {
     const days = book.week.length;
@@ -2080,16 +2123,11 @@ function buildPages(book, contextLabel) {
       <h2>${esc(book.title)}</h2>
       ${book.subtitle ? `<p class="book-subtitle">${esc(book.subtitle)}</p>` : ''}
       ${book.badge ? `<span class="badge badge--soon book-badge">${esc(book.badge)}</span>` : ''}
-      <h3 class="wk-head">${esc(T('thisWeek'))}</h3>
       <p class="wk-explain">${esc(T('weekExplain', { days: NUM_WORDS[days] || days }))}</p>
       <p class="wk-alldone" data-week-done hidden>${esc(T('weekDone'))}</p>
       ${book.itemNote ? `<p class="link-note">${esc(book.itemNote)}</p>` : ''}
-      <div class="wk-finish">
-        <p class="wk-finish__text">${esc(T('finishPrompt'))}</p>
-        <div class="no-flip"><button type="button" class="done-btn finish-in-page" data-finish aria-pressed="false">${iconSvg('check')}<span class="finish-label">${esc(T('finishButton'))}</span></button></div>
-      </div>
-      <p class="week-goal" data-week-goal></p>
       <p class="complete-msg" data-complete-msg role="status" hidden></p>
+      <video class="page-mascot" src="images/mascot-wave.mp4" muted playsinline preload="auto" aria-hidden="true" tabindex="-1" data-mascot></video>
       <div class="page-foot">1</div>
     </div></div>`);
     const week = el(`<div class="page"><div class="page-inner page-inner--week">
@@ -2113,10 +2151,7 @@ function buildPages(book, contextLabel) {
     <h3>${esc(T('startHere'))}</h3>
     <ul class="link-list no-flip">${book.items.map(itemHtml).join('')}</ul>
     ${book.itemNote ? `<p class="link-note">${esc(book.itemNote)}</p>` : ''}
-    ${state.bookContext === 'course' ? `<h3>${esc(T('whenFinish'))}</h3>
-    <p class="week-goal" data-week-goal></p>
-    <p class="complete-msg" data-complete-msg role="status" hidden></p>
-    <div class="no-flip"><button type="button" class="done-btn finish-in-page" data-finish aria-pressed="false">${iconSvg('check')}<span class="finish-label">${esc(T('finishButton'))}</span></button></div>` : ''}
+    ${state.bookContext === 'course' ? `<p class="complete-msg" data-complete-msg role="status" hidden></p>` : ''}
     <div class="page-foot">1</div>
   </div></div>`);
   const notes = el(`<div class="page"><div class="page-inner">
@@ -2177,8 +2212,7 @@ function openBook(key, context, trigger) {
   dom.sub.textContent = `${label} · ${grade.label}`;
   dom.backLabel.textContent = context === 'course' ? `Back to ${label}` : `Back to ${T('courseExploreName')}`;
   state.bookContext = context;
-  const doneBtn = $('#doneBtn');
-  doneBtn.hidden = context !== 'course';
+  $('#doneGroup').hidden = $('#topWeekGoal').hidden = context !== 'course';
   if (context === 'course') updateDoneBtn();
   dom.reader.hidden = false;
   dom.app.setAttribute('aria-hidden', 'true');
@@ -2209,6 +2243,7 @@ function openBook(key, context, trigger) {
     if (state.bookContext === 'course') updateDoneBtn();   // fill in the week goal and status on the page
     updateUI();
     dom.back.focus();
+    setTimeout(waveMascot, 450);   // after the book has opened and laid out its pages
   });
 }
 function closeBook() {
@@ -2228,7 +2263,7 @@ function closeBook() {
     if (again) again.focus(); else if (state.returnFocus && document.body.contains(state.returnFocus)) state.returnFocus.focus();
   }, REDUCED_MOTION ? 0 : 240);
 }
-dom.back.addEventListener('click', closeBook);
+dom.back.addEventListener('click', leaveBook);
 function updateDoneBtn() {
   const on = !!state.book && isDone(state.courseId, state.book.key);
   $('#doneBtn').setAttribute('aria-pressed', String(on));

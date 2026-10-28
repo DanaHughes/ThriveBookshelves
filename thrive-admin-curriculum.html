@@ -381,7 +381,7 @@ var TEXT_FIELDS = [
   { group:'Course shelf', key:'extraTag', label:'Extra tag', where:'Tag on the workbook the mascot is holding.', def:'EXTRA' },
   { group:'Course shelf', key:'tidy', label:'Tidy button', where:'Button that puts every book and plant back in place.', def:'Put everything back' },
   { group:'This week (inside a workbook)', key:'thisWeek', label:'This week heading', where:'Heading on the first page of every workbook with weekly assignments.', def:'THIS WEEK' },
-  { group:'This week (inside a workbook)', key:'weekExplain', label:'How the week works', where:'Under the THIS WEEK heading. {days} becomes the number of virtual learning days, written as a word.', tokens:['days'], def:'Each week has {days} virtual learning days at home, plus your in-person days on campus. Do your virtual learning days in order, one per day, on any {days} days that work for you.', multi:true },
+  { group:'This week (inside a workbook)', key:'weekExplain', label:'How the week works', where:'Under the THIS WEEK heading. {days} becomes the number of virtual learning days, written as a word.', tokens:['days'], def:'Do one virtual learning day at a time, {days} days each week.', multi:true },
   { group:'This week (inside a workbook)', key:'dayNumber', label:'Day name on each card', where:'Big words at the top of each card. {n} becomes the day number.', tokens:['n'], def:'Day {n}' },
   { group:'This week (inside a workbook)', key:'assignmentBtn', label:'Button name when a day has more than one', where:'On each button of a card with two or more buttons. {n} becomes 1, 2, and so on.', tokens:['n'], def:'Assignment {n}' },
   { group:'This week (inside a workbook)', key:'spendMinutes', label:'Time under a button', where:'Small words under a button that has minutes set. {minutes} becomes the number of minutes.', tokens:['minutes'], def:'Spend about {minutes} minutes' },
@@ -392,7 +392,7 @@ var TEXT_FIELDS = [
   { group:'This week (inside a workbook)', key:'doneTag', label:'Done tag', where:'Tag on cards already finished this week.', def:'Done' },
   { group:'This week (inside a workbook)', key:'openAgain', label:'Open again button', where:'Button on today’s card after it is finished.', def:'Open again' },
   { group:'This week (inside a workbook)', key:'weekDone', label:'Week finished message', where:'Shown when every virtual learning day this week is done.', def:'You finished every virtual learning day this week. Great work!', multi:true },
-  { group:'This week (inside a workbook)', key:'finishPrompt', label:'Finish line', where:'Next to the finish button at the bottom of the first page.', def:'When you finish today’s virtual learning day:' },
+  { group:'This week (inside a workbook)', key:'finishPrompt', label:'Finish line', where:'Above the finish button on the first page. Leave blank for none.', def:'' },
   { group:'Inside a workbook', key:'startHere', label:'Links heading (extras)', where:'Heading above the buttons in Explore extras.', def:'Start here' },
   { group:'Inside a workbook', key:'notesEyebrow', label:'Notes page small label', where:'Small line at the top of the notes page.', def:'About this book' },
   { group:'Inside a workbook', key:'notesTitle', label:'Notes page heading', where:'Heading on the notes page.', def:'Notes' },
@@ -600,11 +600,23 @@ function upgradeFrom3(d) {
   return d;
 }
 
+/* Shelf text Dana never changed still holds an older default: swap it for today's shorter default.
+   Text she typed herself is kept. Safe to run on every load. */
+var RETIRED_TEXT = {
+  weekExplain: ['Each week has {days} virtual learning days at home, plus your in-person days on campus. Do your virtual learning days in order, one per day, on any {days} days that work for you.'],
+  finishPrompt: ['When you finish today’s virtual learning day:']
+};
+function refreshText(d) {
+  if (!d || !d.text) return d;
+  Object.keys(RETIRED_TEXT).forEach(function (k) { if (RETIRED_TEXT[k].indexOf(d.text[k]) >= 0) d.text[k] = TEXT_DEFAULTS[k]; });
+  return d;
+}
+
 /* Older saved data (version 1) still carries brand names and no weekly schedule. */
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, refreshText:refreshText, needsUpgrade:needsUpgrade };
 })();
 
 </script>
@@ -1443,6 +1455,7 @@ $('.head-tools').appendChild(resetBtn);
 let upgradedFromOld = false;
 let upgradeNote = '';
 function upgrade(d) {
+  SEED.refreshText(d);
   if (d && d.version === 2) {   // keep Dana's edits; only Mathematics changes (online math lessons + skill path daily)
     d = SEED.upgradeFrom2(d);
     upgradedFromOld = true;
