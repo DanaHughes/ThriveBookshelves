@@ -43,6 +43,7 @@ svg.icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;s
 .nav a{display:flex;align-items:center;gap:10px;padding:11px 16px;border-radius:12px;color:var(--ink-2);text-decoration:none;font-size:17px}
 .nav a:hover{background:#eeeee4}
 .nav a[aria-current="page"]{background:var(--nav-active);color:var(--ink);font-weight:600}
+.nav a.nav-home{margin-top:10px;border-top:1px solid var(--line);border-radius:0 0 12px 12px;padding-top:15px;color:var(--muted);font-size:15px}
 .nav .new{margin-left:auto;font-size:11px;font-weight:600;letter-spacing:.06em;background:var(--gold);color:#4a3a10;border-radius:999px;padding:2px 8px}
 .side__foot{margin-top:auto;border-top:1px solid var(--line);padding-top:18px;font-size:15px;color:var(--ink-2)}
 .side__foot span{display:block;color:var(--muted);margin-top:14px}
@@ -271,6 +272,7 @@ input[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--dang
   .brand{border-bottom:0;margin-bottom:8px;padding-bottom:8px}
   .nav{flex-direction:row;overflow-x:auto;gap:2px}
   .nav a{font-size:15px;padding:9px 12px;white-space:nowrap}
+  .nav a.nav-home{margin-top:0;border-top:0;border-radius:12px;padding-top:9px}
   .side__foot{display:none}
   main{padding:24px 16px 80px}
   .card{padding:20px 18px}
@@ -295,6 +297,7 @@ input[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--dang
       <a href="#intakes">Intakes</a>
       <a href="#sync">Sync</a>
       <a href="#feedback">Feedback</a>
+      <a class="nav-home" href="index.html">&larr; All prototypes</a>
     </nav>
     <div class="side__foot">Dana Hughes<span>Sign out</span></div>
   </aside>
