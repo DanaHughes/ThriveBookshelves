@@ -869,6 +869,8 @@ body:not(.reader-open) .toast { top: auto; bottom: 24px; }
 .page .wk-card--ahead .wk-title, .page .wk-card--done .wk-title { font-size: clamp(11px, 2.3cqw, 13px); font-weight: 600; }
 .wk-go + .wk-go { margin-top: 1.6cqw; }
 .wk-cards--later .wk-card { min-height: 0; }
+.page-inner--back { align-items: center; justify-content: center; }
+.back-logo { display: block; width: 52%; max-width: 240px; height: auto; mix-blend-mode: multiply; }
 /* picture page facing a later week's cards */
 .page-inner--art { align-items: center; text-align: center; }
 .page-inner--art .eyebrow { align-self: stretch; text-align: left; }
@@ -2212,13 +2214,7 @@ function buildPages(book, contextLabel) {
       if (k % 2) weekPages.push(cardsPage(mon, false), artPage(mon, k));
       else weekPages.push(artPage(mon, k), cardsPage(mon, false));
     });
-    const notes = el(`<div class="page"><div class="page-inner">
-      <p class="eyebrow">${esc(T('notesEyebrow'))}</p>
-      <h2>${esc(T('notesTitle'))}</h2>
-      <ul class="notes">${book.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>
-      <div class="page-foot">${++n}</div>
-    </div></div>`);
-    return [info, ...weekPages, notes];
+    return [info, ...weekPages, backCoverPage()];
   }
   const links = el(`<div class="page"><div class="page-inner">
     <p class="eyebrow">${esc(contextLabel)} · ${esc(currentGrade().label)}</p>
@@ -2231,13 +2227,11 @@ function buildPages(book, contextLabel) {
     ${state.bookContext === 'course' ? `<p class="complete-msg" data-complete-msg role="status" hidden></p>` : ''}
     <div class="page-foot">1</div>
   </div></div>`);
-  const notes = el(`<div class="page"><div class="page-inner">
-    <p class="eyebrow">${esc(T('notesEyebrow'))}</p>
-    <h2>${esc(T('notesTitle'))}</h2>
-    <ul class="notes">${book.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>
-    <div class="page-foot">2</div>
-  </div></div>`);
-  return [links, notes];
+  return [links, backCoverPage()];
+}
+// The last page of every book: plain, with only the round Thrive Academy logo.
+function backCoverPage() {
+  return el(`<div class="page"><div class="page-inner page-inner--back"><img class="back-logo" src="images/thrive-logo.png" alt="Thrive Academy" loading="lazy"></div></div>`);
 }
 
 /* =========================================================
