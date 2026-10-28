@@ -160,6 +160,10 @@ h1{font-size:30px;font-weight:500;margin:0 0 6px;letter-spacing:-.01em}
 .filter{display:flex;gap:6px;flex-wrap:wrap}
 .filter button{border:1px solid var(--line-strong);background:var(--card);border-radius:999px;padding:7px 14px;font-size:14.5px}
 .filter button[aria-pressed="true"]{background:var(--green);color:#fff;border-color:var(--green)}
+.grade-pick{display:flex;align-items:center;gap:8px}
+.grade-pick label{font-weight:600;font-size:15px;white-space:nowrap}
+.grade-pick select{width:auto;min-width:190px;height:44px;padding:0 12px}
+@media (max-width:520px){.grade-pick{width:100%}.grade-pick select{flex:1;min-width:0}}
 .lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
 .lib-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
 .lib-card__top{display:flex;gap:14px}
@@ -645,7 +649,7 @@ const localBackend = {
 const BACKEND = window.THRIVE_CURRICULUM_BACKEND || localBackend;
 
 let cur = null;                 // the curriculum
-let ui = { tab:'grades', grade:'k', student:null, libCourse:'all', libSearch:'' };
+let ui = { tab:'grades', grade:'k', student:null, libCourse:'all', libSearch:'', libGrade:'all' };
 try { Object.assign(ui, JSON.parse(localStorage.getItem(UI_KEY) || '{}')); } catch (e) {}
 const saveUi = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(ui)); } catch (e) {} };
 
@@ -876,11 +880,26 @@ function renderStudents() {
   panel.innerHTML = `<div class="grid-2 grid-people"><div class="card" style="padding:18px 14px"><nav aria-label="Students"><div class="people">${list}</div></nav></div>${detail}</div>`;
 }
 
+// Grade filter: books on that grade's shelf, or books on no grade shelf at all.
+function libGradeMatch(id) {
+  const g = ui.libGrade || 'all';
+  if (g === 'all') return true;
+  if (g === 'none') return !GRADES.some(x => cur.grades[x.id].books.includes(id));
+  return !!cur.grades[g] && cur.grades[g].books.includes(id);
+}
+function libGradeText() {
+  const g = ui.libGrade || 'all';
+  if (g === 'all') return '';
+  if (g === 'none') return ' that are not on any grade shelf';
+  const gr = gradeById(g); return gr ? ` on the ${gr.label} shelf` : '';
+}
 function renderLibrary() {
+  if (ui.libGrade !== 'all' && ui.libGrade !== 'none' && !gradeById(ui.libGrade)) ui.libGrade = 'all';
   const q = ui.libSearch.trim().toLowerCase();
   const books = Object.values(cur.workbooks)
     .filter(w => ui.libCourse === 'all' || w.course === ui.libCourse)
     .filter(w => !q || [w.title, w.subtitle, w.adminLabel].join(' ').toLowerCase().includes(q))
+    .filter(w => libGradeMatch(w.id))
     .sort((a, b) => COURSES.findIndex(c => c.id === a.course) - COURSES.findIndex(c => c.id === b.course) || a.adminLabel.localeCompare(b.adminLabel));
   const cards = books.map(w => {
     const u = usage(w.id);
@@ -896,11 +915,12 @@ function renderLibrary() {
   panel.innerHTML = `
     <div class="toolbar">
       <div class="search">${icon('search')}<label class="sr-only" for="libSearch">Search workbooks</label><input id="libSearch" type="text" placeholder="Search workbooks" value="${esc(ui.libSearch)}"></div>
+      <div class="grade-pick"><label for="libGrade">Grade</label><select id="libGrade"><option value="all" ${ui.libGrade === 'all' ? 'selected' : ''}>All grades</option>${GRADES.map(g => `<option value="${g.id}" ${ui.libGrade === g.id ? 'selected' : ''}>${esc(g.label)}</option>`).join('')}<option value="none" ${ui.libGrade === 'none' ? 'selected' : ''}>Not on any grade shelf</option></select></div>
       <div class="filter" role="group" aria-label="Course">${[['all','All'], ...COURSES.map(c => [c.id, courseName(c.id)])].map(([id, n]) => `<button type="button" data-libcourse="${id}" aria-pressed="${ui.libCourse === id}">${esc(n)}</button>`).join('')}</div>
       <button class="btn btn--primary" type="button" data-act="new">${icon('plus')}New workbook</button>
     </div>
-    <p class="card__sub" style="margin:-6px 0 16px">${books.length} workbook${books.length === 1 ? '' : 's'}. Editing a workbook changes it on every shelf it is on. Need a different version for one grade? Duplicate it first.</p>
-    <div class="lib-grid">${cards || '<p class="empty">No workbooks match.</p>'}</div>`;
+    <p class="card__sub" style="margin:-6px 0 16px">${books.length} workbook${books.length === 1 ? '' : 's'}${libGradeText()}. Editing a workbook changes it on every shelf it is on. Need a different version for one grade? Duplicate it first.</p>
+    <div class="lib-grid">${cards || '<p class="empty">No workbooks match. Try All grades or clear the search.</p>'}</div>`;
 }
 
 
@@ -1288,6 +1308,7 @@ panel.addEventListener('input', e => {
 });
 panel.addEventListener('input', e => { if (e.target.id === 'libSearch') { ui.libSearch = e.target.value; const pos = e.target.selectionStart; renderLibrary(); const i = $('#libSearch'); i.focus(); i.setSelectionRange(pos, pos); } });
 
+panel.addEventListener('change', e => { if (e.target.id === 'libGrade') { ui.libGrade = e.target.value; renderLibrary(); saveUi(); $('#libGrade')?.focus(); } });
 // Shelf text saves when you leave the box. Fill-ins must stay in the sentence.
 panel.addEventListener('change', e => {
   const key = e.target.dataset.text; if (!key) return;

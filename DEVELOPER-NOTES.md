@@ -82,6 +82,61 @@ This package adds a **Curriculum** tab to the Thrive admin dashboard. It sits be
    - Per-student changes go in `curriculum_student_shelf`. Students can read only their own row.
 5. **Remove the sample tools** you don't want in production: the "Start over with sample data" button, and Export and Import. Export and Import are useful as backups, so consider keeping them.
 
+## Version 2 changes (October 2026)
+
+- **One shared starting curriculum.** `seed.js` holds the starting books, wording and app settings. It is inlined into both pages, so they can never drift apart. Saved data now carries `version: 2`. The Curriculum tab upgrades older saved data automatically, keeping the roster and any per-student changes. The bookshelf ignores version 1 data until the tab has upgraded it.
+- **No brand names for students.** Each shared app has `vendor` (admins only), plus `name`, `button` and `login`, which are the only words students see. Lexia, ALEKS, IXL, Essentials in Writing, edclub, Snorkl and "Skill Builders" no longer appear anywhere on the student side. "Sign in with Clever" stays, because it tells students how to log in.
+- **Strand titles.**
+  - K to 1: Phonics and Word Study
+  - 2 to 5: Reading and Word Study
+  - 6 to 8: Reading and Vocabulary
+- **Virtual learning days.**
+  - Each workbook with weekly assignments has `schedule: [{ title, desc, link }]`. `link` is the index of one of the workbook's buttons, or `-1` for none.
+  - `ThriveSeed.weekPlan(book, days)` makes one card per virtual learning day. If the schedule is shorter than the week, its last day repeats.
+  - Reading follows the rotation: online reading lessons (Lexia Core5 for K to 5, Lexia PowerUp for 6 to 8), online reading lessons again, then the grade-level skill path (IXL).
+  - Inside a workbook:
+    - page 1: title, THIS WEEK explanation and the finish button
+    - page 2: the cards (Today, Look ahead, Done)
+    - page 3: notes
+  - Which card is today comes from how many times the student has finished the book this week.
+- **Shelf sizing.** On computers, the books shrink until every shelf fits on the screen (smallest width 96 px). Covers scale with the book width.
+- **IXL link.** The IXL link is a placeholder (`https://www.ixl.com/signin`). Paste the real Clever instant-login link in the Curriculum tab, under any reading workbook, in Shared apps.
+- **No "practice."** The word "practice" is not used anywhere students see.
+
+## Version 3 changes
+
+- **Mathematics:** every virtual learning day shows two buttons, online math lessons (MyPath) and the grade-level skill path (IXL). ALEKS and DreamBox are not used.
+  - The MyPath link is a placeholder (`https://clever.com/login`) until the real link is pasted in the Curriculum tab.
+- **Several buttons per day.** A day can show more than one button: `schedule[i].links` is a list of button positions. Older single-button days (`link`) are still read.
+- **Upgrading saved data.** Version 2 data upgrades in place with `ThriveSeed.upgradeFrom2`. Only the starting Mathematics books are replaced; every other edit is kept.
+- **Writing** is unchanged while it is on hold.
+
+## Student apps tab
+
+- **New tab.** The Curriculum tab has a **Student apps** tab, which lists every entry in `apps`. From it, admins can:
+  - Edit all fields: `vendor` (admins only), `name`, `button`, `login`, `url`.
+  - Add an app. The key is generated, like `app-xxxx`.
+  - Swap an app for another in every workbook.
+  - Remove an app.
+- **Swap.** Swapping rewrites `workbooks[*].links`.
+  - If a workbook already has the target app, the two buttons merge into one, and `schedule[i].links` positions are remapped.
+  - The old app stays in `apps` until it is removed.
+- **Remove.** An app can only be removed when no workbook uses it. The tab lists the workbooks that still use it.
+  - When a starting app (one in `SEED_APPS`) is removed, its key is saved in `removedApps`. `upgrade()` then does not add it back on the next load.
+  - Supabase stores this inside the same `curriculum` JSON, so no schema change is needed.
+- **Brand-name warning.** The tab warns when the student-facing name, button or sign-in note contains the program name.
+- **Bookshelf.** The bookshelf already reads any app key from `CUR.apps`, so no bookshelf change was needed.
+
+## Workbook library grade filter
+
+- **New filter.** The Workbook library has a **Grade** dropdown with these choices:
+  - All grades
+  - Kindergarten through Eighth Grade
+  - Not on any grade shelf
+- **What a grade means.** A grade choice lists the workbooks in `grades[g].books`. Books added for single students (`overrides`) do not count.
+- **Combining filters.** The dropdown works together with the course filter and the search box.
+- **Remembered choice.** The choice is saved in `ui.libGrade`, in the browser's `thriveCurriculum:ui` storage.
+
 ## Prototype mode (no Supabase)
 
 In the prototype, `thrive-wood-bookshelf.html` already reads the Curriculum tab:
