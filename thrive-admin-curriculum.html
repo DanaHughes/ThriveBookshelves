@@ -357,7 +357,7 @@ input[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--dang
    ===================================================================== */
 (function () {
 'use strict';
-var VERSION = 4;
+var VERSION = 5;
 var GRADES = [
   { id:'k', n:0, label:'Kindergarten' }, { id:'1', n:1, label:'First Grade' }, { id:'2', n:2, label:'Second Grade' },
   { id:'3', n:3, label:'Third Grade' },  { id:'4', n:4, label:'Fourth Grade' }, { id:'5', n:5, label:'Fifth Grade' },
@@ -382,6 +382,7 @@ var TEXT_FIELDS = [
   { group:'Course shelf', key:'tidy', label:'Tidy button', where:'Button that puts every book and plant back in place.', def:'Put everything back' },
   { group:'This week (inside a workbook)', key:'thisWeek', label:'This week heading', where:'Heading on the first page of every workbook with weekly assignments.', def:'THIS WEEK' },
   { group:'This week (inside a workbook)', key:'weekExplain', label:'How the week works', where:'Under the THIS WEEK heading. {days} becomes the number of virtual learning days, written as a word.', tokens:['days'], def:'Do one virtual learning day at a time, {days} days each week.', multi:true },
+  { group:'This week (inside a workbook)', key:'weekExplainOne', label:'How the week works (once-a-week books)', where:'Under the THIS WEEK heading, in a book with one assignment a week, like Writing.', def:'One assignment each week, after your lesson.', multi:true },
   { group:'This week (inside a workbook)', key:'weekOf', label:'Later week heading', where:'Top of each page for a later week. {dates} becomes the dates, like Nov 2–6.', tokens:['dates'], def:'Week of {dates}' },
   { group:'This week (inside a workbook)', key:'cheers', label:'Picture page sayings', where:'One short line on each later week’s picture page. Put each saying on its own line; they take turns.', def:'Keep growing!\nEvery day counts.\nYou’ve got this!\nLittle steps, big growth.\nKeep reading, keep growing.\nYou are doing great!\nOne day at a time.\nProud of your hard work!', multi:true },
   { group:'This week (inside a workbook)', key:'breakNext', label:'Break coming note', where:'On the picture page of the week before a break. {break} becomes the break name, {date} the day school starts again.', tokens:['break','date'], def:'{break} is next week. See you {date}!' },
@@ -405,7 +406,9 @@ var TEXT_FIELDS = [
   { group:'Inside a workbook', key:'undoButton', label:'Undo button', where:'Small undo button on the first page.', def:'Undo' },
   { group:'Inside a workbook', key:'bookComplete', label:'Workbook complete message', where:'Shown after finishing. {book} becomes the workbook title in lowercase.', tokens:['book'], def:'Today’s {book} assignments are complete.' },
   { group:'Inside a workbook', key:'weekly', label:'Weekly count', where:'Weekly line on the first page.', tokens:['done','goal'], def:'This week: {done} of {goal} virtual learning days' },
-  { group:'Inside a workbook', key:'weeklyMet', label:'Weekly count when goal is met', where:'Replaces the weekly line once the goal is reached.', tokens:['done','goal'], def:'This week: {done} of {goal} virtual learning days (weekly goal met!)' }
+  { group:'Inside a workbook', key:'weeklyMet', label:'Weekly count when goal is met', where:'Replaces the weekly line once the goal is reached.', tokens:['done','goal'], def:'This week: {done} of {goal} virtual learning days (weekly goal met!)' },
+  { group:'Inside a workbook', key:'weeklyOne', label:'Weekly line (once-a-week books)', where:'Weekly line in a book with one assignment a week, before it is done.', def:'This week: not done yet' },
+  { group:'Inside a workbook', key:'weeklyOneMet', label:'Weekly line when done (once-a-week books)', where:'Replaces the line above once this week’s assignment is done.', def:'This week: done!' }
 ];
 var TEXT_DEFAULTS = {};
 TEXT_FIELDS.forEach(function (f) { TEXT_DEFAULTS[f.key] = f.def; });
@@ -418,15 +421,16 @@ var L = {
   typing:{ 6:'https://www.edclub.com/sportal/program-111.game', 7:'https://www.edclub.com/sportal/program-120.game', 8:'https://www.edclub.com/sportal/program-122.game' },
   novel:{ 6:'https://danahughes.github.io/6th_novel_study_flipbook/', 7:'https://danahughes.github.io/7th_novel_study_flipbook/', 8:'https://danahughes.github.io/8th_novel_study_flipbook/' },
   hsFiction:'https://www.edclub.com/sportal/program-248.game', hsNonfiction:'https://www.edclub.com/library/vocabulary-high-school-narrative-nonfiction',
-  hsPoetry:'https://www.edclub.com/sportal/program-305.game'
+  hsPoetry:'https://www.edclub.com/sportal/program-305.game',
+  // Thrive Writing Journal, one page per school week. {week} becomes this week's Monday (20261026), so the button opens this week's page.
+  writingJournal:{ 0:'writing/k/#w{week}' }
 };
 /* Shared app logins. `vendor` is for admins only; students see `name`, `button` and `login`. */
 var SEED_APPS = {
   core5:   { vendor:'Lexia Core5',           name:'Online reading lessons', button:'Start today’s lessons',  url:'https://www.lexiacore5.com/?SiteID=7229-2300-5006-6748', login:'Click here' },
   powerUp: { vendor:'Lexia PowerUp',         name:'Online reading lessons', button:'Start today’s lessons',  url:'https://www.lexiapowerup.com/', login:'Click here' },
   ixl:     { vendor:'IXL',                   name:'Grade-level skill path', button:'Open your skill path',        url:'https://www.ixl.com/signin', login:'Click here' },
-  mypath:  { vendor:'MyPath',                name:'Online math lessons',    button:'Start today’s math lessons', url:'https://clever.com/login', login:'Click here' },
-  eiw:     { vendor:'Essentials in Writing', name:'Writing lessons',        button:'Start today’s lesson',   url:'https://members.essentialsinwriting.com/login/', login:'Use your own writing lesson login' }
+  mypath:  { vendor:'MyPath',                name:'Online math lessons',    button:'Start today’s math lessons', url:'https://clever.com/login', login:'Click here' }
 };
 var C = { reading:'#2f4a35', handwriting:'#6a4c33', writing:'#253a5c', novel:'#8a5a22', wordstudy:'#1f4a3c', math:'#6b2c27', sel:'#7d3a4a', vocab:'#3d5a45', typing:'#55633a' };
 var MATH_SUB = {
@@ -454,6 +458,22 @@ function readDays(n) {
 }
 var SKILL_NOTE = 'Every virtual learning day: online reading lessons and your grade-level skill path, in any order.';
 
+// Writing: one live writing lesson a week, then one Writing Journal page (graphic organizer + writing lines).
+// One card a week. Grades without a journal yet show it as coming soon.
+var WRITING_NOTES = ['One live writing lesson with your teacher each week.',
+  'After the lesson: one journal page with a graphic organizer and writing lines, matched to grade-level writing standards.'];
+function writingBook(n) {
+  var url = L.writingJournal[n];
+  return wb({ key:'writing', title:'Writing', color:C.writing, icon:'pen', days:1,
+    subtitle: n <= 2 ? 'Graphic Organizers and Journal Writing' : 'Graphic Organizers, Paragraphs, and Essays',
+    badge: url ? '' : 'Coming soon',
+    links: url ? [link('My Writing Journal', 'This week’s journal page', url)] : [],
+    linkNote: url ? '' : 'Your writing journal is coming soon.',
+    schedule:[day('Writing journal', url ? 'After your writing lesson, plan, write, and draw on this week’s journal page.'
+                                        : 'After your writing lesson, finish the writing your teacher gives you.', url ? [0] : [])],
+    notes:WRITING_NOTES });
+}
+
 function seedBooksForGrade(n) {
   var G = GRADES[n].label, out = [];
   if (n <= 1) out.push(wb({ key:'reading', title:'Phonics and Word Study', color:C.reading, icon:'book',
@@ -474,9 +494,7 @@ function seedBooksForGrade(n) {
   else if (n <= 5) out.push(wb({ key:'handwriting', title:'Cursive', color:C.handwriting, icon:'pencil', badge:'Coming soon', subtitle:'Cursive Letter Formation and Connections',
     links:[link('Thrive Printing Interactive Workbook', 'Handwriting workbook', L.printingWb)], linkNote:'The Thrive cursive workbook is coming soon.', schedule:same(3, HW_DAY),
     notes:['Handwriting uses the Thrive Printing Interactive Workbook until the cursive workbook is ready.'] }));
-  out.push(wb({ key:'writing', title:'Writing', color:C.writing, icon:'pen', subtitle: n <= 2 ? 'Composition and Sentence Formation' : 'Composition and Grammar',
-    links:[app('eiw')], schedule:same(3, day('Writing lesson', 'Watch today’s writing lesson and complete the matching page in your writing workbook.', [0])),
-    notes:['Writing and grammar use a video writing course and workbook.'] }));
+  out.push(writingBook(n));
   if (n >= 6) {
     out.push(wb({ key:'novel', title:'Novel Study', color:C.novel, icon:'bookmark', subtitle:'Student Book Choice Novel Study Using the Five Finger Rule',
       links:[link(G + ' Novel Study', 'Novel study flipbook', L.novel[n])], linkNote:'Get parent and teacher approval before you begin your novel.',
@@ -600,6 +618,28 @@ function upgradeFrom3(d) {
       Object.keys(d.overrides || {}).some(function (s) { return (d.overrides[s].added || []).indexOf(id) >= 0; });
     if (!used) delete d.workbooks[id];
   });
+  d.version = 4;
+  return upgradeFrom4(d);
+}
+
+/* Version 4 to 5: Essentials in Writing is retired. Every Writing book becomes the new Writing book
+   (one lesson a week, then the Thrive Writing Journal). Everything else Dana edited is kept. */
+function upgradeFrom4(d) {
+  var fresh = buildSeed(), oldIds = {};
+  Object.keys(d.workbooks || {}).forEach(function (id) { if (/^writing-/.test(id)) oldIds[id] = true; });
+  Object.keys(fresh.workbooks).forEach(function (id) { if (/^writing-/.test(id)) d.workbooks[id] = fresh.workbooks[id]; });
+  GRADES.forEach(function (g) {
+    var shelf = d.grades && d.grades[g.id], freshId = fresh.grades[g.id].books.filter(function (id) { return /^writing-/.test(id); })[0];
+    if (!shelf || !freshId) return;
+    shelf.books = shelf.books.map(function (id) { return oldIds[id] ? freshId : id; })
+      .filter(function (id, i, a) { return a.indexOf(id) === i; });
+  });
+  Object.keys(d.overrides || {}).forEach(function (s) {
+    var o = d.overrides[s];
+    ['added', 'removed'].forEach(function (k) { if (Array.isArray(o[k])) o[k] = o[k].filter(function (id) { return !oldIds[id] || fresh.workbooks[id]; }); });
+  });
+  Object.keys(oldIds).forEach(function (id) { if (!fresh.workbooks[id]) delete d.workbooks[id]; });
+  if (d.apps) delete d.apps.eiw;
   d.version = VERSION;
   return d;
 }
@@ -651,7 +691,7 @@ function refreshText(d) {
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
 })();
 
 </script>
@@ -1495,6 +1535,9 @@ function upgrade(d) {
     d = SEED.upgradeFrom2(d);
     upgradedFromOld = true;
     upgradeNote = 'Updated Mathematics: online math lessons and the grade-level skill path every virtual learning day. Your other edits were kept.';
+  }
+  if (d && d.version === 4) {   // keep every edit; only the Writing books change (weekly Writing Journal)
+    d = SEED.upgradeFrom4(d);
   }
   if (d && d.version === 3) {   // keep every edit; only the "Click here" note and unchanged reading books change
     d = SEED.upgradeFrom3(d);
