@@ -8,7 +8,7 @@
    ===================================================================== */
 (function () {
 'use strict';
-var VERSION = 6;
+var VERSION = 7;
 var GRADES = [
   { id:'k', n:0, label:'Kindergarten' }, { id:'1', n:1, label:'First Grade' }, { id:'2', n:2, label:'Second Grade' },
   { id:'3', n:3, label:'Third Grade' },  { id:'4', n:4, label:'Fourth Grade' }, { id:'5', n:5, label:'Fifth Grade' },
@@ -70,6 +70,7 @@ var L = {
   sel45:'https://www.edclub.com/library/elementary-sel-3', sel68:'https://www.edclub.com/library/middle-school-sel',
   vocab:{ 3:'https://www.edclub.com/sportal/program-85.game', 4:'https://www.edclub.com/sportal/program-91.game', 5:'https://www.edclub.com/sportal/program-99.game' },
   typing:{ 6:'https://www.edclub.com/sportal/program-111.game', 7:'https://www.edclub.com/sportal/program-120.game', 8:'https://www.edclub.com/sportal/program-122.game' },
+  cursive:'https://danahughes.github.io/cursive/',
   novel:{ 6:'https://danahughes.github.io/6th_novel_study_flipbook/', 7:'https://danahughes.github.io/7th_novel_study_flipbook/', 8:'https://danahughes.github.io/8th_novel_study_flipbook/' },
   hsFiction:'https://www.edclub.com/sportal/program-248.game', hsNonfiction:'https://www.edclub.com/library/vocabulary-high-school-narrative-nonfiction',
   hsPoetry:'https://www.edclub.com/sportal/program-305.game',
@@ -142,9 +143,11 @@ function seedBooksForGrade(n) {
   var HW_DAY = day('Handwriting lesson', 'Complete the next pages in your handwriting workbook.', [0]);
   if (n <= 2) out.push(wb({ key:'handwriting', title:'Handwriting', color:C.handwriting, icon:'pencil', subtitle:'Manuscript Printing and Letter Formation',
     links:[link('Thrive Printing Interactive Workbook', 'Handwriting workbook', L.printingWb)], schedule:same(3, HW_DAY), notes:['Handwriting uses the Thrive Printing Interactive Workbook.'] }));
-  else if (n <= 5) out.push(wb({ key:'handwriting', title:'Cursive', color:C.handwriting, icon:'pencil', badge:'Coming soon', subtitle:'Cursive Letter Formation and Connections',
-    links:[link('Thrive Printing Interactive Workbook', 'Handwriting workbook', L.printingWb)], linkNote:'The Thrive cursive workbook is coming soon.', schedule:same(3, HW_DAY),
-    notes:['Handwriting uses the Thrive Printing Interactive Workbook until the cursive workbook is ready.'] }));
+  // Cursive: on the Language Arts shelf in 3rd grade; optional in Explore for 2nd, 4th and 5th.
+  else if (n === 3) out.push(wb({ key:'handwriting', title:'Cursive', color:C.handwriting, icon:'pencil', subtitle:'Cursive Letter Formation and Connections',
+    links:[link('Thrive Cursive Workbook', 'Cursive workbook', L.cursive)],
+    schedule:same(3, day('Cursive lesson', 'Trace and write the next letter in your cursive workbook.', [0])),
+    notes:['Cursive uses the Thrive Cursive Workbook: one letter at a time, uppercase and lowercase.'] }));
   out.push(writingBook(n));
   if (n >= 6) {
     out.push(wb({ key:'novel', title:'Novel Study', color:C.novel, icon:'bookmark', subtitle:'Student Book Choice Novel Study Using the Five Finger Rule',
@@ -167,6 +170,9 @@ function seedBooksForGrade(n) {
   out.push(wb({ key:'sel', course:'explore', title:'Social-Emotional Learning', color:C.sel, icon:'heart', subtitle:'Feelings, Friendships, and a Growth Mindset', links:sel, notes:['Optional: for students who finish early or want more.'] }));
   if (n >= 3 && n <= 5) out.push(wb({ key:'vocab', course:'explore', title:'Vocabulary', color:C.vocab, icon:'puzzle', subtitle:G + ' Vocabulary Course',
     links:[link(G + ' Vocabulary', 'Online course', L.vocab[n])], notes:['Optional: for students who finish early or want more.'] }));
+  if (n === 2 || n === 4 || n === 5) out.push(wb({ key:'cursive', course:'explore', title:'Cursive', color:C.handwriting, icon:'pencil',
+    subtitle:'Cursive Letter Formation and Connections', links:[link('Thrive Cursive Workbook', 'Cursive workbook', L.cursive)],
+    notes:['Optional: learn cursive one letter at a time, uppercase and lowercase.'] }));
   if (n >= 6) out.push(wb({ key:'typing', course:'explore', title:'Typing and Spelling', color:C.typing, icon:'keyboard', subtitle:'Typing Plus Extra Spelling and Vocabulary',
     links:[link(G + ' Typing', 'Online course', L.typing[n])], notes:['For fast finishers who want more.'] }));
   if (n >= 7) out.push(wb({ key:'hsvocab', course:'explore', title:'Advanced Vocabulary', color:C.vocab, icon:'puzzle', subtitle:'High School Level Vocabulary for Gifted 7th and 8th Graders',
@@ -315,6 +321,39 @@ function upgradeFrom5(d) {
     (w.schedule || []).forEach(function (x) { if (typeof x.title === 'string') x.title = swap(x.title); if (typeof x.desc === 'string') x.desc = swap(x.desc); });
     if (Array.isArray(w.notes)) w.notes = w.notes.map(swap);
   });
+  d.version = 6;
+  return upgradeFrom6(d);
+}
+
+/* Version 6 to 7: the Thrive Cursive Workbook is ready. 3rd grade's "Coming soon" Cursive book
+   becomes the real one on the Language Arts shelf; 2nd, 4th and 5th grade get it in Explore
+   (optional), and 4th and 5th lose the "Coming soon" book. Every other edit is kept. */
+function upgradeFrom6(d) {
+  var fresh = buildSeed(), oldIds = {};
+  Object.keys(d.workbooks || {}).forEach(function (id) {
+    var w = d.workbooks[id];
+    if (/^handwriting-/.test(id) && w && w.title === 'Cursive') oldIds[id] = true;
+  });
+  var isCursive = function (id) { return /^cursive-/.test(id) || (/^handwriting-/.test(id) && fresh.workbooks[id].title === 'Cursive'); };
+  Object.keys(fresh.workbooks).forEach(function (id) { if (isCursive(id)) d.workbooks[id] = fresh.workbooks[id]; });
+  GRADES.forEach(function (g) {
+    var shelf = d.grades && d.grades[g.id];
+    if (!shelf || !Array.isArray(shelf.books)) return;
+    var want = fresh.grades[g.id].books.filter(isCursive);
+    var books = shelf.books.filter(function (id) { return !oldIds[id]; });
+    want.forEach(function (id) {
+      if (books.indexOf(id) >= 0) return;
+      // the Language Arts book goes where the old one was; an Explore book goes last
+      var at = shelf.books.findIndex(function (x) { return oldIds[x]; });
+      if (/^handwriting-/.test(id) && at >= 0) books.splice(Math.min(at, books.length), 0, id); else books.push(id);
+    });
+    shelf.books = books;
+  });
+  Object.keys(d.overrides || {}).forEach(function (s) {
+    var o = d.overrides[s];
+    Object.keys(o).forEach(function (k) { if (Array.isArray(o[k])) o[k] = o[k].filter(function (id) { return !oldIds[id] || fresh.workbooks[id]; }); });
+  });
+  Object.keys(oldIds).forEach(function (id) { if (!fresh.workbooks[id]) delete d.workbooks[id]; });
   d.version = VERSION;
   return d;
 }
@@ -366,5 +405,5 @@ function refreshText(d) {
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, upgradeFrom6:upgradeFrom6, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
 })();
