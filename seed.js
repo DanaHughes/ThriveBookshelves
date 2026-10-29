@@ -8,7 +8,7 @@
    ===================================================================== */
 (function () {
 'use strict';
-var VERSION = 7;
+var VERSION = 8;
 var GRADES = [
   { id:'k', n:0, label:'Kindergarten' }, { id:'1', n:1, label:'First Grade' }, { id:'2', n:2, label:'Second Grade' },
   { id:'3', n:3, label:'Third Grade' },  { id:'4', n:4, label:'Fourth Grade' }, { id:'5', n:5, label:'Fifth Grade' },
@@ -65,7 +65,7 @@ var TEXT_DEFAULTS = {};
 TEXT_FIELDS.forEach(function (f) { TEXT_DEFAULTS[f.key] = f.def; });
 
 var L = {
-  printingWb:'https://claude.ai/artifact/6FwRDaGR4GQdNPBWyDzx1s', morphGame:'https://claude.ai/artifact/Cp5gdsy6NE5Pct4m1VoCbn',
+  printingWb:'https://danahughes.github.io/printing-manuscript/', morphGame:'https://claude.ai/artifact/Cp5gdsy6NE5Pct4m1VoCbn',
   selK2:'https://www.edclub.com/sportal/program-140.game', sel23:'https://www.edclub.com/library/elementary-sel-2',
   sel45:'https://www.edclub.com/library/elementary-sel-3', sel68:'https://www.edclub.com/library/middle-school-sel',
   vocab:{ 3:'https://www.edclub.com/sportal/program-85.game', 4:'https://www.edclub.com/sportal/program-91.game', 5:'https://www.edclub.com/sportal/program-99.game' },
@@ -354,6 +354,17 @@ function upgradeFrom6(d) {
     Object.keys(o).forEach(function (k) { if (Array.isArray(o[k])) o[k] = o[k].filter(function (id) { return !oldIds[id] || fresh.workbooks[id]; }); });
   });
   Object.keys(oldIds).forEach(function (id) { if (!fresh.workbooks[id]) delete d.workbooks[id]; });
+  d.version = 7;
+  return upgradeFrom7(d);
+}
+
+/* Version 7 to 8: the Printing workbook moved from a claude.ai link to its own GitHub page.
+   Only links that still hold the old address change; everything else is kept. */
+var OLD_PRINTING = 'https://claude.ai/artifact/6FwRDaGR4GQdNPBWyDzx1s';
+function upgradeFrom7(d) {
+  Object.keys(d.workbooks || {}).forEach(function (id) {
+    (d.workbooks[id].links || []).forEach(function (l) { if (l && l.url === OLD_PRINTING) l.url = L.printingWb; });
+  });
   d.version = VERSION;
   return d;
 }
@@ -405,5 +416,5 @@ function refreshText(d) {
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, upgradeFrom6:upgradeFrom6, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, upgradeFrom6:upgradeFrom6, upgradeFrom7:upgradeFrom7, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
 })();
