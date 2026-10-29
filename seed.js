@@ -8,7 +8,7 @@
    ===================================================================== */
 (function () {
 'use strict';
-var VERSION = 11;
+var VERSION = 12;
 var GRADES = [
   { id:'k', n:0, label:'Kindergarten' }, { id:'1', n:1, label:'First Grade' }, { id:'2', n:2, label:'Second Grade' },
   { id:'3', n:3, label:'Third Grade' },  { id:'4', n:4, label:'Fourth Grade' }, { id:'5', n:5, label:'Fifth Grade' },
@@ -82,6 +82,9 @@ var SEED_APPS = {
   core5:   { vendor:'Lexia Core5',           name:'Online reading lessons', button:'Start today’s lessons',  url:'https://www.lexiacore5.com/?SiteID=7229-2300-5006-6748', login:'Click here' },
   powerUp: { vendor:'Lexia PowerUp',         name:'Online reading lessons', button:'Start today’s lessons',  url:'https://www.lexiapowerup.com/', login:'Click here' },
   ixl:     { vendor:'IXL',                   name:'Grade-level skill path', button:'Open your skill path',        url:'https://www.ixl.com/signin', login:'Click here' },
+  // Language Arts' second button. For the first days of class it opens the reading check-in (IXL ELA Diagnostic);
+  // change the name, button and link back to the skill path in the Curriculum tab when the check-ins are done.
+  ixlCheck:{ vendor:'IXL ELA Diagnostic',    name:'Reading check-in',       button:'Start your check-in',         url:'https://www.ixl.com/diagnostic/arena', login:'Click here' },
   mypath:  { vendor:'MyPath',                name:'Online math lessons',    button:'Start today’s math lessons', url:'https://clever.com/login', login:'Click here' }
 };
 var C = { reading:'#2f4a35', handwriting:'#6a4c33', writing:'#253a5c', novel:'#8a5a22', wordstudy:'#1f4a3c', math:'#6b2c27', sel:'#7d3a4a', vocab:'#3d5a45', typing:'#55633a' };
@@ -131,15 +134,15 @@ function seedBooksForGrade(n) {
   var G = GRADES[n].label, out = [];
   if (n <= 1) out.push(wb({ key:'reading', title:'Phonics and Word Study', color:C.reading, icon:'book',
     subtitle:'Letter Recognition, Phonics, Spelling, Vocabulary, Word Study, Comprehension, Grammar, and Fluency',
-    links:[app('core5'), app('ixl')], schedule:readDays(n),
+    links:[app('core5'), app('ixlCheck')], schedule:readDays(n),
     notes:['Adaptive online reading lessons combined with grade-level exposure activities.', 'Second semester: grade-level skill activities may be added.', SKILL_NOTE] }));
   else if (n <= 5) out.push(wb({ key:'reading', title:'Reading and Word Study', color:C.reading, icon:'book',
     subtitle:'Phonics, Spelling, Vocabulary, Word Study, Comprehension, Grammar, and Fluency',
-    links:[app('core5'), app('ixl')], schedule:readDays(n),
+    links:[app('core5'), app('ixlCheck')], schedule:readDays(n),
     notes: n === 2 ? ['Adaptive online reading lessons combined with grade-level exposure activities.', 'Second semester: grade-level skill activities may be added.', SKILL_NOTE]
                    : ['Adaptive online reading lessons with matching skill activities.', SKILL_NOTE] }));
   else out.push(wb({ key:'reading', title:'Reading and Vocabulary', color:C.reading, icon:'book', subtitle:'Reading, Word Study, Comprehension, Grammar, and Vocabulary',
-    links:[app('powerUp'), app('ixl')], schedule:readDays(n),
+    links:[app('powerUp'), app('ixlCheck')], schedule:readDays(n),
     notes:['Adaptive online reading lessons and grade-level exposure through grade-level activities.', 'Second semester: grade-level skill activities may be added.', SKILL_NOTE] }));
   var HW_DAY = day('Handwriting lesson', 'Complete the next pages in your handwriting workbook.', [0]);
   if (n <= 2) out.push(wb({ key:'handwriting', title:'Handwriting', color:C.handwriting, icon:'pencil', subtitle:'Manuscript Printing and Letter Formation',
@@ -429,6 +432,20 @@ function upgradeFrom10(d) {
         .filter(function (id, i, a) { return a.indexOf(id) === i; });
     });
   }
+  d.version = 11;
+  return upgradeFrom11(d);
+}
+
+/* Version 11 to 12: Language Arts' second button opens the reading check-in (IXL ELA Diagnostic)
+   for the first days of class. Math keeps the skill path. Every other edit is kept. */
+function upgradeFrom11(d) {
+  d.apps = d.apps || {};
+  if (!d.apps.ixlCheck) d.apps.ixlCheck = JSON.parse(JSON.stringify(SEED_APPS.ixlCheck));
+  Object.keys(d.workbooks || {}).forEach(function (id) {
+    var b = d.workbooks[id];
+    if (!b || b.course !== 'la') return;
+    (b.links || []).forEach(function (l) { if (l && l.kind === 'app' && l.app === 'ixl') l.app = 'ixlCheck'; });
+  });
   d.version = VERSION;
   return d;
 }
@@ -480,5 +497,5 @@ function refreshText(d) {
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, upgradeFrom6:upgradeFrom6, upgradeFrom7:upgradeFrom7, upgradeFrom8:upgradeFrom8, upgradeFrom9:upgradeFrom9, upgradeFrom10:upgradeFrom10, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, upgradeFrom6:upgradeFrom6, upgradeFrom7:upgradeFrom7, upgradeFrom8:upgradeFrom8, upgradeFrom9:upgradeFrom9, upgradeFrom10:upgradeFrom10, upgradeFrom11:upgradeFrom11, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
 })();
