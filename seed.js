@@ -8,7 +8,7 @@
    ===================================================================== */
 (function () {
 'use strict';
-var VERSION = 8;
+var VERSION = 9;
 var GRADES = [
   { id:'k', n:0, label:'Kindergarten' }, { id:'1', n:1, label:'First Grade' }, { id:'2', n:2, label:'Second Grade' },
   { id:'3', n:3, label:'Third Grade' },  { id:'4', n:4, label:'Fourth Grade' }, { id:'5', n:5, label:'Fifth Grade' },
@@ -75,7 +75,7 @@ var L = {
   hsFiction:'https://www.edclub.com/sportal/program-248.game', hsNonfiction:'https://www.edclub.com/library/vocabulary-high-school-narrative-nonfiction',
   hsPoetry:'https://www.edclub.com/sportal/program-305.game',
   // Thrive Writing Journal, one page per school week. {week} becomes this week's Monday (20261026), so the button opens this week's page.
-  writingJournal:{ 0:'writing/k/#w{week}' }
+  writingJournal:{ 0:'writing/k/#w{week}', 3:'https://danahughes.github.io/3-5-Writing/#w{week}', 4:'https://danahughes.github.io/3-5-Writing/#w{week}', 5:'https://danahughes.github.io/3-5-Writing/#w{week}' }
 };
 /* Shared app logins. `vendor` is for admins only; students see `name`, `button` and `login`. */
 var SEED_APPS = {
@@ -116,7 +116,8 @@ var WRITING_NOTES = ['One live writing lesson with your teacher each week.',
   'After the lesson: one writing page with a graphic organizer and writing lines, matched to grade-level writing standards.'];
 function writingBook(n) {
   var url = L.writingJournal[n];
-  return wb({ key:'writing', title:'Writing', color:C.writing, icon:'pen', days:1,
+  // Grades 3-5 share their own book (its own id, so the 6-8 "Coming soon" book stays as it was).
+  return wb({ key: n >= 3 && n <= 5 ? 'writing35' : 'writing', title:'Writing', color:C.writing, icon:'pen', days:1,
     subtitle: n <= 2 ? 'Graphic Organizers and Sentence Writing' : 'Graphic Organizers, Paragraphs, and Essays',
     badge: url ? '' : 'Coming soon',
     links: url ? [link('Writing', 'This week’s writing page', url)] : [],
@@ -365,6 +366,22 @@ function upgradeFrom7(d) {
   Object.keys(d.workbooks || {}).forEach(function (id) {
     (d.workbooks[id].links || []).forEach(function (l) { if (l && l.url === OLD_PRINTING) l.url = L.printingWb; });
   });
+  d.version = 8;
+  return upgradeFrom8(d);
+}
+
+/* Version 8 to 9: the Grades 3-5 Writing book is ready (danahughes.github.io/3-5-Writing).
+   Grades 3, 4 and 5 swap their "Coming soon" Writing book for it; everything else is kept. */
+function upgradeFrom8(d) {
+  var fresh = buildSeed(), newId = fresh.grades['3'].books.filter(function (id) { return /^writing35-/.test(id); })[0];
+  if (!newId) { d.version = VERSION; return d; }
+  d.workbooks[newId] = fresh.workbooks[newId];
+  ['3', '4', '5'].forEach(function (g) {
+    var shelf = d.grades && d.grades[g];
+    if (!shelf || !Array.isArray(shelf.books)) return;
+    shelf.books = shelf.books.map(function (id) { return /^writing-/.test(id) ? newId : id; })
+      .filter(function (id, i, a) { return a.indexOf(id) === i; });
+  });
   d.version = VERSION;
   return d;
 }
@@ -416,5 +433,5 @@ function refreshText(d) {
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, upgradeFrom6:upgradeFrom6, upgradeFrom7:upgradeFrom7, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, upgradeFrom6:upgradeFrom6, upgradeFrom7:upgradeFrom7, upgradeFrom8:upgradeFrom8, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
 })();
