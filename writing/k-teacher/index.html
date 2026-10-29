@@ -3190,7 +3190,7 @@ ENGINES.slide = (b, ctx) => {
     t.setAttribute("aria-label", a.label);
     t.placeholder = "Tap to type";
     t.readOnly = true; t.tabIndex = -1;
-    t.addEventListener("input", () => { showHandle(a); ctx.changed(); });
+    t.addEventListener("input", () => { fitText(t); showHandle(a); ctx.changed(); });
     t.addEventListener("focus", () => showHandle(a));
     t.addEventListener("blur", () => showHandle(a));
     boxes[a.id] = t;
@@ -3256,7 +3256,7 @@ ENGINES.slide = (b, ctx) => {
     load(d){
       if (!d) return;
       pad.load(d.s);
-      Object.entries(d.t || {}).forEach(([k, v]) => { if (boxes[k]) boxes[k].value = v; });
+      Object.entries(d.t || {}).forEach(([k, v]) => { if (boxes[k]) { boxes[k].value = v; fitText(boxes[k]); } });
       Object.entries(d.at || {}).forEach(([k, xy]) => { const a = b.areas.find(z => z.id === k); if (a) { moved[k] = xy; place(a, xy[0], xy[1]); } });
       b.areas.forEach(showHandle);
     },
@@ -3268,6 +3268,17 @@ ENGINES.slide = (b, ctx) => {
     lock(){ pad.lock(); Object.values(boxes).forEach(t => { t.readOnly = true; }); Object.values(handles).forEach(h => { h.hidden = true; }); },
   };
 };
+
+/* Typed words shrink to fit their bubble or box (never below 55% of the page size). */
+function fitText(t){
+  t.style.fontSize = "";
+  if (!t.value || !t.clientHeight) return;
+  const base = parseFloat(getComputedStyle(t).fontSize);
+  for (let k = 1; t.scrollHeight > t.clientHeight + 1 && k > 0.55; ) {
+    k -= 0.05; t.style.fontSize = (base * k).toFixed(1) + "px";
+  }
+}
+window.addEventListener("resize", () => document.querySelectorAll("textarea.slidebox").forEach(fitText));
 
 /* The week's prompt, printed on the organizer where its Name and Date line
    was, so it sits right beside the lines. Every organizer has that line in
