@@ -412,12 +412,12 @@ button.nav-item:hover { background: #eceee3; }
 /* =========================================================
    9. IN-PAGE VIEWER (links that allow embedding open here)
    ========================================================= */
-.viewer { position: fixed; inset: 0; z-index: 1150; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(30,49,41,.55); opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
+.viewer { position: fixed; inset: 0; z-index: 1150; display: flex; align-items: center; justify-content: center; padding: 8px; background: rgba(30,49,41,.55); opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
 .viewer[hidden] { display: none; }
 .viewer.is-open { opacity: 1; }
-.viewer__panel { display: flex; flex-direction: column; width: min(1180px, 100%); height: min(860px, 100%); background: #fffdf6; border-radius: 18px; overflow: hidden; box-shadow: var(--shadow-xl); transform: translateY(12px) scale(.98); transition: transform var(--dur-slow) var(--ease-out); }
+.viewer__panel { display: flex; flex-direction: column; width: 100%; height: 100%; background: #fffdf6; border-radius: 18px; overflow: hidden; box-shadow: var(--shadow-xl); transform: translateY(12px) scale(.98); transition: transform var(--dur-slow) var(--ease-out); }
 .viewer.is-open .viewer__panel { transform: none; }
-.viewer__bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 20px; background: var(--nav-active); color: #fff; }
+.viewer__bar { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 18px; background: var(--nav-active); color: #fff; }
 .viewer__bar h2 { flex: 1; min-width: 0; color: #fff; font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .viewer__btn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 12px; background: rgba(255,255,255,.14); color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; }
 .viewer__btn:hover { background: rgba(255,255,255,.24); }
