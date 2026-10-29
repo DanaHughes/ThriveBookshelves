@@ -8,7 +8,7 @@
    ===================================================================== */
 (function () {
 'use strict';
-var VERSION = 9;
+var VERSION = 10;
 var GRADES = [
   { id:'k', n:0, label:'Kindergarten' }, { id:'1', n:1, label:'First Grade' }, { id:'2', n:2, label:'Second Grade' },
   { id:'3', n:3, label:'Third Grade' },  { id:'4', n:4, label:'Fourth Grade' }, { id:'5', n:5, label:'Fifth Grade' },
@@ -75,7 +75,7 @@ var L = {
   hsFiction:'https://www.edclub.com/sportal/program-248.game', hsNonfiction:'https://www.edclub.com/library/vocabulary-high-school-narrative-nonfiction',
   hsPoetry:'https://www.edclub.com/sportal/program-305.game',
   // Thrive Writing Journal, one page per school week. {week} becomes this week's Monday (20261026), so the button opens this week's page.
-  writingJournal:{ 0:'writing/k/#w{week}', 3:'https://danahughes.github.io/3-5-Writing/#w{week}', 4:'https://danahughes.github.io/3-5-Writing/#w{week}', 5:'https://danahughes.github.io/3-5-Writing/#w{week}' }
+  writingJournal:{ 0:'writing/k/#w{week}', 1:'writing/k/#w{week}', 2:'writing/k/#w{week}', 3:'https://danahughes.github.io/3-5-Writing/#w{week}', 4:'https://danahughes.github.io/3-5-Writing/#w{week}', 5:'https://danahughes.github.io/3-5-Writing/#w{week}' }
 };
 /* Shared app logins. `vendor` is for admins only; students see `name`, `button` and `login`. */
 var SEED_APPS = {
@@ -382,6 +382,21 @@ function upgradeFrom8(d) {
     shelf.books = shelf.books.map(function (id) { return /^writing-/.test(id) ? newId : id; })
       .filter(function (id, i, a) { return a.indexOf(id) === i; });
   });
+  d.version = 9;
+  return upgradeFrom9(d);
+}
+
+/* Version 9 to 10: the Kindergarten Writing book is the Grades K to 2 book, so 1st and 2nd grade
+   swap their "Coming soon" Writing book for it (the same book Kindergarten has). Everything else is kept. */
+function upgradeFrom9(d) {
+  var fresh = buildSeed(), kId = fresh.grades.k.books.filter(function (id) { return /^writing-/.test(id); })[0];
+  if (kId && !d.workbooks[kId]) d.workbooks[kId] = fresh.workbooks[kId];
+  ['1', '2'].forEach(function (g) {
+    var shelf = d.grades && d.grades[g];
+    if (!kId || !shelf || !Array.isArray(shelf.books)) return;
+    shelf.books = shelf.books.map(function (id) { return /^writing-/.test(id) ? kId : id; })
+      .filter(function (id, i, a) { return a.indexOf(id) === i; });
+  });
   d.version = VERSION;
   return d;
 }
@@ -433,5 +448,5 @@ function refreshText(d) {
 function needsUpgrade(data) { return !data || !data.version || data.version < VERSION; }
 
 window.ThriveSeed = { VERSION:VERSION, TEXT_FIELDS:TEXT_FIELDS, TEXT_DEFAULTS:TEXT_DEFAULTS, SEED_APPS:SEED_APPS,
-  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, upgradeFrom6:upgradeFrom6, upgradeFrom7:upgradeFrom7, upgradeFrom8:upgradeFrom8, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
+  buildSeed:buildSeed, gradeRange:gradeRange, weekPlan:weekPlan, dayLinks:dayLinks, upgradeFrom2:upgradeFrom2, upgradeFrom3:upgradeFrom3, upgradeFrom4:upgradeFrom4, upgradeFrom5:upgradeFrom5, upgradeFrom6:upgradeFrom6, upgradeFrom7:upgradeFrom7, upgradeFrom8:upgradeFrom8, upgradeFrom9:upgradeFrom9, refreshText:refreshText, CALENDAR:CALENDAR, schoolWeeks:schoolWeeks, parseDay:parseDay, dayKey:dayKey, mondayOf:mondayOf, needsUpgrade:needsUpgrade };
 })();
